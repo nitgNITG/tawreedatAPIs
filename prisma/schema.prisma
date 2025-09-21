@@ -193,15 +193,26 @@ model Product {
 }
 
 model ProductAttribute {
-  id        Int    @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   key       String
   value     String
+  valueAr   String?
   productId String
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([key, productId])
   @@map("product_attributes")
+}
+
+model SealingUnit {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  nameAr    String? // Arabic name
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sealing_units")
 }
 
 model Brand {
@@ -513,7 +524,7 @@ model Region {
   name      String          @unique @db.VarChar(100)
   countryId String?
   country   Country?        @relation(fields: [countryId], references: [id], onDelete: Cascade)
-  prices    ShoppingPrice[]
+  prices    ShippingPrice[]
 
   @@index([countryId], map: "Region_countryId_fkey")
   @@map("Regions")
@@ -524,10 +535,10 @@ model ShippingMethod {
   name      String          @unique @db.VarChar(100)
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
-  prices    ShoppingPrice[]
+  prices    ShippingPrice[]
 }
 
-model ShoppingPrice {
+model ShippingPrice {
   id                    Int            @id @default(autoincrement())
   regionId              Int
   methodId              Int
@@ -540,5 +551,5 @@ model ShoppingPrice {
   updatedAt             DateTime       @updatedAt
 
   @@unique([regionId, methodId])
-  @@map("ShoppingPrices")
+  @@map("ShippingPrices")
 }
