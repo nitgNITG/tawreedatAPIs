@@ -6,6 +6,8 @@ export const createBrandSchema = (lang) => {
     .object({
       name: z.string().min(1, getTranslation(lang, "name_required")),
       nameAr: z.string().optional(),
+      description: z.string().optional(),
+      descriptionAr: z.string().optional(),
       isActive: z
         .union([z.boolean(), z.string().transform((val) => val === "true")])
         .optional(),

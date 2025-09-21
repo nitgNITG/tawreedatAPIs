@@ -6,7 +6,6 @@ generator erd {
   provider = "prisma-erd-generator"
 }
 
-
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
@@ -147,8 +146,8 @@ model Category {
   updatedAt         DateTime @updatedAt
 
   // Relations
-  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children Category[] @relation("CategoryHierarchy")
+  parent   Category?       @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[]      @relation("CategoryHierarchy")
   products Product[]
   brands   BrandCategory[]
 
@@ -206,20 +205,22 @@ model ProductAttribute {
 }
 
 model Brand {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  slug      String   @unique
-  nameAr    String? // Arabic name
-  logoUrl   String?
-  coverUrl  String?
-  isActive  Boolean  @default(true)
-  isDeleted Boolean  @default(false)
-  isPopular Boolean  @default(false)
+  id            Int     @id @default(autoincrement())
+  name          String  @unique
+  slug          String  @unique
+  nameAr        String? // Arabic name
+  description   String?
+  descriptionAr String? // Arabic description
+  logoUrl       String?
+  coverUrl      String?
+  isActive      Boolean @default(true)
+  isDeleted     Boolean @default(false)
+  isPopular     Boolean @default(false)
 
   // Relations
-  products  Product[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  products   Product[]
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
   categories BrandCategory[]
 
   @@map("brands")
@@ -237,7 +238,6 @@ model BrandCategory {
   @@unique([brandId, categoryId])
   @@map("brand_categories")
 }
-
 
 // Suppliers
 model Supplier {

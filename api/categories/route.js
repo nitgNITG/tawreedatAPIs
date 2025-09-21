@@ -104,67 +104,72 @@ export const categorySchema = (lang) => {
 
 router
   .route("/")
-  .post(authorization, upload.single("imageUrl"), async (req, res) => {
-    const lang = langReq(req);
-    try {
-      const admin = req.user;
-      if (admin?.role !== "ADMIN")
-        return res
-          .status(403)
-          .json({ message: getTranslation(lang, "not_allowed") });
+  .post(
+    authorization,
+    upload.fields([{ name: "imageUrl" }, { name: "iconUrl" }]),
+    async (req, res) => {
+      const lang = langReq(req);
+      try {
+        const admin = req.user;
+        if (admin?.role !== "ADMIN")
+          return res
+            .status(403)
+            .json({ message: getTranslation(lang, "not_allowed") });
 
-      const query = new FeatureApi(req).fields().data;
+        const query = new FeatureApi(req).fields().data;
 
-      const resultValidation = categorySchema(lang).safeParse(req.body);
-      if (!resultValidation.success) {
-        console.error(resultValidation.error);
-        return res.status(400).json({
-          message: resultValidation.error.issues[0].message,
-          errors: resultValidation.error.issues.map((issue) => ({
-            path: issue.path,
-            message: issue.message,
-          })),
+        const resultValidation = categorySchema(lang).safeParse(req.body);
+        if (!resultValidation.success) {
+          console.error(resultValidation.error);
+          return res.status(400).json({
+            message: resultValidation.error.issues[0].message,
+            errors: resultValidation.error.issues.map((issue) => ({
+              path: issue.path,
+              message: issue.message,
+            })),
+          });
+        }
+        const data = resultValidation.data;
+        const imageUrl = req.files["imageUrl"]?.[0];
+        const iconUrl = req.files["iconUrl"]?.[0];
+        if (imageUrl) {
+          data.imageUrl = await uploadImage(imageUrl, `/categories`);
+        }
+        if (iconUrl) {
+          data.iconUrl = await uploadImage(iconUrl, `/categories`);
+        }
+
+        const category = await prisma.category.create({
+          data,
+          ...(query ?? {}),
+        });
+        res.status(200).json({ message: "category_created", category });
+        // await pushNotification({
+        //   key: {
+        //     title: "notification_category_created_title",
+        //     desc: "notification_category_created_desc",
+        //   },
+        //   args: {
+        //     title: [],
+        //     desc: [admin.fullname, category.name],
+        //   },
+        //   lang,
+        //   users: [],
+        //   adminUserId: admin.id,
+        //   data: {
+        //     navigate: "categories",
+        //     route: `/${lang}/categories/${category.id}`,
+        //   },
+        // });
+      } catch (error) {
+        console.error(error);
+        res.status(400).json({
+          message: getTranslation(lang, "internalError"),
+          error: error.message,
         });
       }
-      const data = resultValidation.data;
-      const imageUrl = req.file;
-      // if (!imageUrl)
-      //   return res
-      //     .status(400)
-      //     .json({ message: getTranslation(lang, "category_image_required") });
-
-      // data.imageUrl = await uploadImage(imageUrl, `/categories/${Date.now()}`);
-
-      const category = await prisma.category.create({
-        data,
-        ...(query ?? {}),
-      });
-      res.status(200).json({ message: "category_created", category });
-      // await pushNotification({
-      //   key: {
-      //     title: "notification_category_created_title",
-      //     desc: "notification_category_created_desc",
-      //   },
-      //   args: {
-      //     title: [],
-      //     desc: [admin.fullname, category.name],
-      //   },
-      //   lang,
-      //   users: [],
-      //   adminUserId: admin.id,
-      //   data: {
-      //     navigate: "categories",
-      //     route: `/${lang}/categories/${category.id}`,
-      //   },
-      // });
-    } catch (error) {
-      console.error(error);
-      res.status(400).json({
-        message: getTranslation(lang, "internalError"),
-        error: error.message,
-      });
     }
-  })
+  )
 
   .get(async (req, res) => {
     const lang = langReq(req);

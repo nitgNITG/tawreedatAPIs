@@ -37,79 +37,87 @@ router
       });
     }
   })
-  .put(authorization, upload.single("imageUrl"), async (req, res) => {
-    const id = +req.params.id;
-    const lang = langReq(req);
-    try {
-      const admin = req.user;
-      if (admin?.role !== "ADMIN") {
-        return res
-          .status(403)
-          .json({ message: getTranslation(lang, "not_allowed") });
-      }
-      const query = new FeatureApi(req).fields().data;
-      const resultValidation = categorySchema(lang)
-        .partial()
-        .safeParse(req.body);
-      if (!resultValidation.success) {
-        return res.status(400).json({
-          message: resultValidation.error.errors[0].message,
-          errors: resultValidation.error.errors,
+  .put(
+    authorization,
+    upload.fields([{ name: "imageUrl" }, { name: "iconUrl" }]),
+    async (req, res) => {
+      const id = +req.params.id;
+      const lang = langReq(req);
+      try {
+        const admin = req.user;
+        if (admin?.role !== "ADMIN") {
+          return res
+            .status(403)
+            .json({ message: getTranslation(lang, "not_allowed") });
+        }
+        const query = new FeatureApi(req).fields().data;
+        const resultValidation = categorySchema(lang)
+          .partial()
+          .safeParse(req.body);
+        if (!resultValidation.success) {
+          return res.status(400).json({
+            message: resultValidation.error.errors[0].message,
+            errors: resultValidation.error.errors,
+          });
+        }
+        const cate = await prisma.category.findUnique({ where: { id } });
+        if (!cate) {
+          return res.status(404).json({
+            message: getTranslation(lang, "category_not_found"),
+          });
+        }
+        const data = resultValidation.data;
+        const imageUrl = req.files["imageUrl"]?.[0];
+        const iconUrl = req.files["iconUrl"]?.[0];
+        if (imageUrl) {
+          data.imageUrl = await uploadImage(imageUrl, `/categories`);
+        }
+        if (iconUrl) {
+          data.iconUrl = await uploadImage(iconUrl, `/categories`);
+        }
+        if (data.deleteImage) {
+          await deleteImage(cate.imageUrl);
+          await deleteImage(cate.iconUrl);
+          data.imageUrl = null;
+          data.iconUrl = null;
+          delete data.deleteImage;
+        }
+        const category = await prisma.category.update({
+          where: { id },
+          data,
+          ...(query ?? {}),
         });
-      }
-      const cate = await prisma.category.findUnique({ where: { id } });
-      if (!cate) {
-        return res.status(404).json({
-          message: getTranslation(lang, "category_not_found"),
+        res.status(200).json({
+          message: getTranslation(lang, "category_updated"),
+          category,
         });
-      }
-      const data = resultValidation.data;
-      const imageUrl = req.file;
-      if (imageUrl) {
-        data.imageUrl = await uploadImage(
-          imageUrl,
-          `/categories/${Date.now()}/`
-        );
-        await deleteImage(cate.imageUrl);
-      }
-      if (data.deleteImage) {
-        await deleteImage(cate.imageUrl);
-        data.imageUrl = null;
-      }
-      const category = await prisma.category.update({
-        where: { id },
-        data,
-        ...(query ?? {}),
-      });
-      res
-        .status(200)
-        .json({ message: getTranslation(lang, "category_updated"), category });
 
-      await pushNotification({
-        key: {
-          title: "notification_category_updated_title",
-          desc: "notification_category_updated_desc",
-        },
-        args: {
-          title: [],
-          desc: [admin.fullname, category.name],
-        },
-        lang,
-        users: [],
-        adminUserId: admin.id,
-        data: {
-          navigate: "categories",
-          route: `/${lang}/categories/${category.id}`,
-        },
-      });
-    } catch (error) {
-      console.error(error);
-      res.status(400).json({
-        message: getTranslation(lang, "internalError"),
-        error: error.message,
-      });
+        await pushNotification({
+          key: {
+            title: "notification_category_updated_title",
+            desc: "notification_category_updated_desc",
+          },
+          args: {
+            title: [],
+            desc: [admin.fullname, category.name],
+          },
+          lang,
+          users: [],
+          adminUserId: admin.id,
+          data: {
+            navigate: "categories",
+            route: `/${lang}/categories/${category.id}`,
+          },
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(400).json({
+          message: getTranslation(lang, "internalError"),
+          error: error.message,
+        });
+      }
     }
-  })
+  )
   .delete(authorization, async (req, res) => {
     const id = +req.params.id;
     const lang = langReq(req);
