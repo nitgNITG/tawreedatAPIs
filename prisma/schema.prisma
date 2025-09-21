@@ -1,0 +1,544 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator erd {
+  provider = "prisma-erd-generator"
+}
+
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  MANAGER
+  CUSTOMER
+}
+
+enum genderType {
+  MALE
+  FEMALE
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum Language {
+  EN
+  AR
+}
+
+enum LoginType {
+  LOCAL
+  GOOGLE
+  FACEBOOK
+  APPLE
+}
+
+// User Management
+model User {
+  id                  String      @id @default(uuid())
+  email               String?     @unique @db.VarChar(70)
+  fullname            String      @db.VarChar(50)
+  phone               String?     @unique @db.VarChar(20)
+  password            String?     @db.VarChar(100)
+  imageUrl            String?     @db.VarChar(200)
+  lang                Language    @default(AR)
+  lastLoginAt         DateTime    @default(now())
+  isActive            Boolean     @default(true)
+  isConfirmed         Boolean     @default(true)
+  passwordLastUpdated DateTime    @default(now())
+  isDeleted           Boolean     @default(false)
+  updatedAt           DateTime    @updatedAt
+  createdAt           DateTime    @default(now())
+  birthDate           DateTime?
+  gender              genderType?
+  fcmToken            String?
+  role                UserRole    @default(CUSTOMER)
+  loginType           LoginType   @default(LOCAL)
+
+  // Relations
+  orders      Order[]
+  cartItems   CartItem[]
+  reviews     Review[]
+  wishlist    WishlistItem[]
+  UserAddress UserAddress[]
+  UserVerify  UserVerify[]
+  wallet      Wallet?
+
+  @@map("users")
+}
+
+model Wallet {
+  id            Int       @id @default(autoincrement())
+  points        Int       @default(0)
+  userId        String    @unique
+  lastCheckedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  totalSpent    Float?    @default(0)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserAddress {
+  id        Int      @id @default(autoincrement())
+  address   String
+  lat       String
+  long      String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "Address_userId_fkey")
+}
+
+model UserVerify {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  code      String   @unique
+  phone     String?
+  createdAt DateTime @default(now())
+  email     String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "UserVerify_userId_fkey")
+}
+
+model Faqs {
+  id        Int       @id @default(autoincrement())
+  question  String
+  answer    String
+  language  Language? @default(EN)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+// Categories for products
+model Category {
+  id                Int      @id @default(autoincrement())
+  name              String   @unique
+  nameAr            String? // Arabic name
+  description       String?
+  descriptionAr     String? // Arabic description
+  imageUrl          String?
+  iconUrl           String?
+  parentId          Int?
+  isActive          Boolean  @default(true)
+  productAttributes Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy")
+  products Product[]
+  brands   BrandCategory[]
+
+  @@map("categories")
+}
+
+// Products (Books, Stationery, etc.)
+model Product {
+  id            String   @id @default(uuid())
+  name          String
+  nameAr        String? // Arabic name
+  description   String?
+  descriptionAr String? // Arabic description
+  price         Float
+  costPrice     Float?
+  stock         Int      @default(0)
+  minStock      Int      @default(5)
+  sku           String   @unique
+  barcode       String?  @unique
+  images        String?  @db.LongText
+  weight        Float?
+  dimensions    String? // "length x width x height"
+  isActive      Boolean  @default(true)
+  isFeatured    Boolean  @default(false)
+  offer         Float?
+  categoryId    Int
+  supplierId    String?
+  brandId       Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  category   Category           @relation(fields: [categoryId], references: [id])
+  supplier   Supplier?          @relation(fields: [supplierId], references: [id])
+  brand      Brand?             @relation(fields: [brandId], references: [id])
+  orderItems OrderItem[]
+  cartItems  CartItem[]
+  reviews    Review[]
+  wishlist   WishlistItem[]
+  attributes ProductAttribute[]
+
+  @@map("products")
+}
+
+model ProductAttribute {
+  id        Int    @id @default(autoincrement())
+  key       String
+  value     String
+  productId String
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([key, productId])
+  @@map("product_attributes")
+}
+
+model Brand {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  slug      String   @unique
+  nameAr    String? // Arabic name
+  logoUrl   String?
+  coverUrl  String?
+  isActive  Boolean  @default(true)
+  isDeleted Boolean  @default(false)
+  isPopular Boolean  @default(false)
+
+  // Relations
+  products  Product[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  categories BrandCategory[]
+
+  @@map("brands")
+}
+
+model BrandCategory {
+  id         Int      @id @default(autoincrement())
+  brandId    Int
+  categoryId Int
+  createdAt  DateTime @default(now())
+
+  brand    Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, categoryId])
+  @@map("brand_categories")
+}
+
+
+// Suppliers
+model Supplier {
+  id            String   @id @default(uuid())
+  name          String
+  nameAr        String?
+  email         String?  @unique
+  phone         String?
+  address       String?
+  city          String?
+  governorate   String?
+  contactPerson String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  products Product[]
+
+  @@map("suppliers")
+}
+
+// Orders
+model Order {
+  id              String        @id @default(uuid())
+  orderNumber     String        @unique
+  customerId      String
+  totalAmount     Float
+  shippingCost    Float         @default(0)
+  discount        Float         @default(0)
+  taxAmount       Float         @default(0)
+  status          OrderStatus   @default(PENDING)
+  paymentMethod   String?
+  paymentStatus   PaymentStatus @default(PENDING)
+  shippingAddress String?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  customer User        @relation(fields: [customerId], references: [id])
+  items    OrderItem[]
+
+  @@map("orders")
+}
+
+// Order Items
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float // Price at time of order
+  createdAt DateTime @default(now())
+
+  // Relations
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+// Shopping Cart
+model CartItem {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("cart_items")
+}
+
+// Product Reviews
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  rating    Int // 1-5 stars
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("reviews")
+}
+
+// Wishlist
+model WishlistItem {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("wishlist_items")
+}
+
+model Ad {
+  id              Int           @id @default(autoincrement())
+  title           String
+  titleAr         String? // Arabic title
+  description     String?
+  descriptionAr   String? // Arabic description
+  imageUrl        String
+  targetUrl       String
+  startDate       DateTime
+  endDate         DateTime
+  budget          Float         @default(0)
+  priority        Int
+  status          AdsStatus     @default(Active)
+  placement       AdsPlacement? @default(Top)
+  adType          AdsType       @default(Home)
+  popupSize       AdsPopupSize? @default(Medium)
+  frequency       AdsFrequency? @default(Once)
+  timing          Int           @default(0)
+  closable        Boolean?      @default(true)
+  displayDuration Int           @default(24)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("Ads")
+}
+
+enum AdsPopupSize {
+  Small
+  Medium
+  Large
+}
+
+enum AdsFrequency {
+  Once
+  Daily
+  PerSession
+}
+
+enum AdsStatus {
+  Active
+  Inactive
+}
+
+enum AdsType {
+  Home
+  Popup
+}
+
+enum AdsPlacement {
+  Top
+  Middle
+  Bottom
+}
+
+model AboutApp {
+  id               String   @id
+  terms            String?  @db.Text
+  termsAr          String?  @db.Text
+  about            String?  @db.Text
+  aboutAr          String?  @db.Text
+  privacy_policy   String?  @db.Text
+  privacy_policyAr String?  @db.Text
+  mission          String?  @db.Text
+  missionAr        String?  @db.Text
+  vision           String?  @db.Text
+  visionAr         String?  @db.Text
+  digitalCard      String?  @db.Text
+  digitalCardAr    String?  @db.Text
+  phone            String?
+  email            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  facebook         String?  @db.VarChar(200)
+  instagram        String?  @db.VarChar(200)
+  linkedin         String?  @db.VarChar(200)
+  pinterest        String?  @db.VarChar(200)
+  reddit           String?  @db.VarChar(200)
+  snapchat         String?  @db.VarChar(200)
+  telegram         String?  @db.VarChar(200)
+  tiktok           String?  @db.VarChar(200)
+  twitter          String?  @db.VarChar(200)
+  whatsapp         String?  @db.VarChar(200)
+  youtube          String?  @db.VarChar(200)
+}
+
+model ApplicationSettings {
+  id                                 String   @id
+  numberOfProductsOnHomepage         Int      @default(3)
+  numberOfCategoriesOnHomepage       Int      @default(3)
+  numberOfFeaturedProductsOnHomepage Int      @default(10)
+  numberOfLatestOffersOnHomepage     Int      @default(3)
+  numberOfNewArrivalsOnHomepage      Int      @default(3)
+  vat                                Float    @default(5)
+  lastAttempt                        DateTime @default(now())
+  loginAttemptDurationMinutes        Int?     @default(20) @db.SmallInt
+  loginAttempts                      Int?     @default(5) @db.SmallInt
+  createdAt                          DateTime @default(now())
+  updatedAt                          DateTime @updatedAt
+  loginAsGuest                       Boolean  @default(false)
+  permanentDelete                    Boolean  @default(false)
+}
+
+model OnBoarding {
+  id        Int      @id @default(autoincrement())
+  imageUrl  String?
+  title     String
+  titleAr   String? // Arabic title
+  content   String
+  contentAr String? // Arabic content
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ContactUs {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String
+  message   String   @db.Text
+  response  String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  read      Boolean  @default(false)
+}
+
+model Article {
+  id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(255)
+  slug        String   @unique @db.VarChar(255)
+  summary     String?  @db.VarChar(500)
+  content     String   @db.Text
+  coverImage  String?
+  keywords    String?  @db.VarChar(255)
+  publishedAt DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  author      String   @db.VarChar(255)
+
+  @@map("Articles")
+}
+
+model Color {
+  id   String @id
+  name String @db.VarChar(100)
+  code String @db.VarChar(7)
+
+  @@map("Colors")
+}
+
+model Country {
+  id        String   @id
+  name      String   @db.VarChar(100)
+  code      String   @db.VarChar(3)
+  phoneCode String   @db.VarChar(5)
+  regions   Region[]
+
+  @@map("Countries")
+}
+
+model Region {
+  id        Int             @id @default(autoincrement())
+  name      String          @unique @db.VarChar(100)
+  countryId String?
+  country   Country?        @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  prices    ShoppingPrice[]
+
+  @@index([countryId], map: "Region_countryId_fkey")
+  @@map("Regions")
+}
+
+model ShippingMethod {
+  id        Int             @id @default(autoincrement())
+  name      String          @unique @db.VarChar(100)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  prices    ShoppingPrice[]
+}
+
+model ShoppingPrice {
+  id                    Int            @id @default(autoincrement())
+  regionId              Int
+  methodId              Int
+  basePrice             Float
+  additionalWeightPrice Float
+  estimatedDeliveryDays Int
+  region                Region         @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  method                ShippingMethod @relation(fields: [methodId], references: [id], onDelete: Cascade)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@unique([regionId, methodId])
+  @@map("ShoppingPrices")
+}

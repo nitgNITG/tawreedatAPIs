@@ -1,0 +1,51 @@
+{
+  "name": "mostasmer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "db:mig": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:pull": "prisma db pull",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@json2csv/plainjs": "^7.0.6",
+    "@prisma/client": "^6.13.0",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "firebase-admin": "^13.4.0",
+    "jsonwebtoken": "^9.0.2",
+    "libphonenumber-js": "^1.12.10",
+    "morgan": "^1.10.1",
+    "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
+    "node-device-detector": "^2.2.2",
+    "nodemon": "^3.1.10",
+    "passport": "^0.7.0",
+    "passport-apple": "^2.0.2",
+    "passport-facebook": "^3.0.0",
+    "passport-google-oauth20": "^2.0.0",
+    "pdfkit": "^0.17.1",
+    "sanitize-html": "^2.17.0",
+    "sharp": "^0.34.3",
+    "zod": "^4.0.5"
+  },
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^11.10.1",
+    "prisma": "^6.13.0",
+    "prisma-erd-generator": "^2.1.0",
+    "puppeteer": "^23.11.1"
+  }
+}
