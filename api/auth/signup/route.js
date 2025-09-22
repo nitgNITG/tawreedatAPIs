@@ -71,9 +71,8 @@ router.post("/", async (req, res) => {
     // hash password
 
     data.password = await bcrypt.hash(data.password, 10);
-
     const user = await prisma.user.create({
-      data,
+      data
     });
     const token = jwt.sign(
       { userId: user.id, role: user.role },
@@ -83,13 +82,13 @@ router.post("/", async (req, res) => {
     // create otp
     const code = generateCode(6);
 
-    await prisma.userVerify.create({
-      data: {
-        code: `${code}`,
-        userId: user.id,
-        phone: user.phone,
-      },
-    });
+    // await prisma.userVerify.create({
+    //   data: {
+    //     code: `${code}`,
+    //     userId: user.id,
+    //     phone: user.phone,
+    //   },
+    // });
 
     //Device information.
     // const deviceDetector = new DeviceDetector();
@@ -114,7 +113,8 @@ router.post("/", async (req, res) => {
     //   },
     // });
     res.status(200).json({
-      message: getTranslation(lang, "check_your_phone"),
+      // message: getTranslation(lang, "check_your_phone"),
+      message: getTranslation(lang, "login_success"),
       token,
       id: user.id,
     });

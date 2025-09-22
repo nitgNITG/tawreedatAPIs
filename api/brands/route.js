@@ -54,7 +54,17 @@ router
         }
         const query = new FeatureApi(req).fields().data;
 
-        const resultValidation = createBrandSchema(lang).safeParse(req.body);
+        const resultValidation = createBrandSchema(lang)
+          .refine((data) => {
+            data.categories = {
+              create: data.categories?.map((id) => ({ categoryId: id })) || [],
+            };
+            data.products = {
+              create: data.products?.map((id) => ({ productId: id })) || [],
+            };
+            return true;
+          })
+          .safeParse(req.body);
 
         if (!resultValidation.success) {
           console.log("Validation failed:", resultValidation.error);

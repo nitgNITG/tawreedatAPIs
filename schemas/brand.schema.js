@@ -20,17 +20,28 @@ export const createBrandSchema = (lang) => {
       products: z
         .union([
           z.array(z.number()),
-          z
-            .string()
-            .transform((val) => (JSON.parse(val) < 0 ? [] : JSON.parse(val))),
+          z.string().transform((val) => {
+            try {
+              const parsed = val ? JSON.parse(val) : [];
+              return Array.isArray(parsed) && parsed.length > 0 ? parsed : [];
+            } catch (e) {
+              console.warn("Failed to parse products JSON:", e.message);
+              return [];
+            }
+          }),
         ])
         .optional(),
       categories: z
         .union([
           z.array(z.number()),
-          z
-            .string()
-            .transform((val) => (JSON.parse(val) < 0 ? [] : JSON.parse(val))),
+          z.string().transform((val) => {
+            try {
+              return val ? JSON.parse(val) : [];
+            } catch (e) {
+              console.warn("Failed to parse categories JSON:", e.message);
+              return [];
+            }
+          }),
         ])
         .optional(),
     })

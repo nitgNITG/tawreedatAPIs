@@ -89,7 +89,7 @@ router
         .safeParse(req.body);
       if (!resultValidation.success) {
         console.log("hi");
-        
+
         return res.status(400).json({
           message: resultValidation.error.issues[0].message,
           errors: resultValidation.error.issues.map((issue) => ({
@@ -107,7 +107,6 @@ router
       console.log("Validation result data:", data);
       console.log("req.files:", req.files?.length || 0, "files");
       console.log("============================");
-
       if (data.deleteAttributes) {
         await prisma.productAttribute.deleteMany({
           where: {
@@ -352,6 +351,19 @@ router
         product: formattedProduct,
       });
 
+      await prisma.brandCategory.upsert({
+        where: {
+          brandId_categoryId: {
+            brandId: data.brandId,
+            categoryId: data.categoryId,
+          },
+        },
+        update: {},
+        create: {
+          brandId: data.brandId,
+          categoryId: data.categoryId,
+        },
+      });
       // await pushNotification({
       //   key: {
       //     title: "notification_product_updated_title",

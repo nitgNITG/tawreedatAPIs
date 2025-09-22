@@ -6,9 +6,7 @@ import authorization from "../../../middleware/authorization.js";
 import upload from "../../../middleware/upload.js";
 import uploadImage from "../../../utils/uploadImage.js";
 import deleteImage from "../../../utils/deleteImage.js";
-import {
-  updateBrandSchema,
-} from "../../../schemas/brand.schema.js";
+import { updateBrandSchema } from "../../../schemas/brand.schema.js";
 
 const router = Router();
 
@@ -69,6 +67,16 @@ router
         // Check if brand exists
         const existingBrand = await prisma.brand.findUnique({
           where: { id },
+          include: {
+            categories: {
+              select: { id: true, categoryId: true },
+            },
+            products: {
+              select: {
+                id: true,
+              },
+            },
+          },
         });
 
         if (!existingBrand) {
@@ -77,7 +85,41 @@ router
           });
         }
 
-        const resultValidation = updateBrandSchema(lang).safeParse(req.body);
+        const resultValidation = updateBrandSchema(lang)
+          .refine((data) => {
+            if (data.categories && data.categories.length > 0) {
+              const categoryIdsToDelete = existingBrand.categories
+                .filter((c) => !data.categories.includes(c.categoryId))
+                .map((c) => {
+                  return { id: c.id };
+                });
+
+              data.categories = {
+                ...(categoryIdsToDelete.length
+                  ? {
+                      deleteMany: categoryIdsToDelete,
+                    }
+                  : {}),
+                upsert: data.categories.map((id) => ({
+                  where: {
+                    brandId_categoryId: {
+                      brandId: existingBrand.id,
+                      categoryId: id,
+                    },
+                  },
+                  create: { categoryId: id },
+                  update: { categoryId: id },
+                })),
+              };
+            }
+            if (data.products && data.products.length > 0) {
+              data.products = {
+                set: data.products.map((id) => ({ productId: id })),
+              };
+            }
+            return true;
+          })
+          .safeParse(req.body);
 
         if (!resultValidation.success) {
           return res.status(400).json({
@@ -91,8 +133,6 @@ router
 
         const data = resultValidation.data;
 
-        console.log(data);
-
         // Handle file uploads
         const cover = req?.files?.["coverUrl"]?.[0];
         const logo = req?.files?.["logoUrl"]?.[0];
@@ -105,7 +145,7 @@ router
         if (logo) {
           data.logoUrl = await uploadImage(logo, `/brands`);
           console.log(data.logoUrl);
-          
+
           await deleteImage(existingBrand.logoUrl);
         }
 
@@ -122,7 +162,6 @@ router
         // Remove the delete flags from data to avoid issues with Prisma
         delete data.deleteCoverUrl;
         delete data.deleteLogoUrl;
-        console.log(data);
 
         const updatedBrand = await prisma.brand.update({
           where: { id },

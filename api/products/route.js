@@ -268,6 +268,11 @@ export const productSchema = (
       .refine((val) => !isNaN(val) && val > 0, {
         message: getTranslation(lang, "category_required"),
       }),
+    brandId: z
+      .union([z.string().transform((val) => parseInt(val)), z.number()])
+      .refine((val) => !isNaN(val) && val > 0, {
+        message: getTranslation(lang, "brand_required"),
+      }),
     supplierId: z.string().optional(),
     attributes: z
       .union([
@@ -480,6 +485,20 @@ router
       res.status(201).json({
         message: getTranslation(lang, "product_created_successfully"),
         product: formattedProduct,
+      });
+
+      await prisma.brandCategory.upsert({
+        where: {
+          brandId_categoryId: {
+        brandId: data.brandId,
+        categoryId: data.categoryId,
+          },
+        },
+        update: {},
+        create: {
+          brandId: data.brandId,
+          categoryId: data.categoryId,
+        },
       });
       // await pushNotification({
       //   key: {

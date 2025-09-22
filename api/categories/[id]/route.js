@@ -67,8 +67,8 @@ router
           });
         }
         const data = resultValidation.data;
-        const imageUrl = req.files["imageUrl"]?.[0];
-        const iconUrl = req.files["iconUrl"]?.[0];
+        const imageUrl = req?.files?.["imageUrl"]?.[0];
+        const iconUrl = req?.files?.["iconUrl"]?.[0];
         if (imageUrl) {
           data.imageUrl = await uploadImage(imageUrl, `/categories`);
         }
