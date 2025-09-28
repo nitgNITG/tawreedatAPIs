@@ -144,8 +144,6 @@ router
 
         if (logo) {
           data.logoUrl = await uploadImage(logo, `/brands`);
-          console.log(data.logoUrl);
-
           await deleteImage(existingBrand.logoUrl);
         }
 

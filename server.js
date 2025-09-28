@@ -7,7 +7,7 @@ import path from "path";
 import fs from "fs";
 import cookieParser from "cookie-parser";
 import { info } from "console";
-import prisma from './prisma/client.js'
+import prisma from "./prisma/client.js";
 
 //create app
 const app = express();
@@ -53,10 +53,7 @@ app.set("query parser", "extended");
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.use(
-  "/uploads",
-  express.static(path.join(__dirname, "uploads"))
-);
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // app.use(
 //   "/uploads",
 //   express.static(
@@ -112,7 +109,6 @@ const loadRoutes = async (folderPath, baseRoute = "/api") => {
     console.log("listening on port", port);
   });
 })();
-
 
 // // Seed data for colors and countries
 // export const colorSeeds = [

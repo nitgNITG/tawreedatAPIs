@@ -79,6 +79,8 @@ const normalizeValues = (obj) => {
       !Array.isArray(value)
     ) {
       result[key] = normalizeValues(value);
+    } else if (value === "{}") {
+      result[key] = {};
     } else if (value === "null") {
       result[key] = null;
     } else {

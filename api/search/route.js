@@ -19,47 +19,110 @@ router.route("/").get(async (req, res) => {
       prisma.brand.findMany({
         where: {
           OR: [
-            { name: { contains: keyword,  } },
-            { nameAr: { contains: keyword,  } },
-            { description: { contains: keyword,  } },
-            { descriptionAr: { contains: keyword,  } },
+            { name: { search: `+${keyword}` } },
+            { nameAr: { search: `+${keyword}` } },
+            { description: { search: `+${keyword}` } },
+            { descriptionAr: { search: `+${keyword}` } },
           ],
           isDeleted: false,
           isActive: true,
         },
         take: 10,
+        // orderBy: {
+        //   _relevance: {
+        //     fields: ["name", "nameAr", "description", "descriptionAr"],
+        //     search: keyword,
+        //     sort: "asc",
+        //   },
+        // },
       }),
       prisma.category.findMany({
         where: {
           OR: [
-            { name: { contains: keyword,  } },
-            { nameAr: { contains: keyword,  } },
-            { description: { contains: keyword,  } },
-            { descriptionAr: { contains: keyword,  } },
+            { name: { search: keyword } },
+            { nameAr: { search: keyword } },
+            { description: { search: keyword } },
+            { descriptionAr: { search: keyword } },
           ],
           isActive: true,
         },
         take: 10,
+        orderBy: {
+          _relevance: {
+            fields: ["name", "nameAr", "description", "descriptionAr"],
+            search: keyword,
+            sort: "asc",
+          },
+        },
       }),
       prisma.product.findMany({
         where: {
           OR: [
-            { name: { contains: keyword,  } },
-            { nameAr: { contains: keyword,  } },
-            { description: { contains: keyword,  } },
-            { descriptionAr: { contains: keyword,  } },
-            { sku: { contains: keyword,  } },
-            { barcode: { contains: keyword,  } },
+            { name: { search: keyword } },
+            { nameAr: { search: keyword } },
+            { description: { search: keyword } },
+            { descriptionAr: { search: keyword } },
+            { sku: { contains: keyword } },
+            { barcode: { contains: keyword } },
           ],
           isActive: true,
         },
         take: 10,
-        include: {
-          brand: true,
-          category: true,
+        orderBy: {
+          _relevance: {
+            fields: ["name", "nameAr", "description", "descriptionAr"],
+            search: keyword,
+            sort: "asc",
+          },
         },
       }),
     ]);
+
+    // const [brands, categories, products] = await Promise.all([
+    //   prisma.brand.findMany({
+    //     where: {
+    //       OR: [
+    //         { name: { contains: keyword,  } },
+    //         { nameAr: { contains: keyword,  } },
+    //         { description: { contains: keyword,  } },
+    //         { descriptionAr: { contains: keyword,  } },
+    //       ],
+    //       isDeleted: false,
+    //       isActive: true,
+    //     },
+    //     take: 10,
+    //   }),
+    //   prisma.category.findMany({
+    //     where: {
+    //       OR: [
+    //         { name: { contains: keyword,  } },
+    //         { nameAr: { contains: keyword,  } },
+    //         { description: { contains: keyword,  } },
+    //         { descriptionAr: { contains: keyword,  } },
+    //       ],
+    //       isActive: true,
+    //     },
+    //     take: 10,
+    //   }),
+    //   prisma.product.findMany({
+    //     where: {
+    //       OR: [
+    //         { name: { contains: keyword,  } },
+    //         { nameAr: { contains: keyword,  } },
+    //         { description: { contains: keyword,  } },
+    //         { descriptionAr: { contains: keyword,  } },
+    //         { sku: { contains: keyword,  } },
+    //         { barcode: { contains: keyword,  } },
+    //       ],
+    //       isActive: true,
+    //     },
+    //     take: 10,
+    //     include: {
+    //       brand: true,
+    //       category: true,
+    //     },
+    //   }),
+    // ]);
 
     res.status(200).json({
       message: getTranslation(lang, "search_success"),

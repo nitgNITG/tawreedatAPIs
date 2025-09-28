@@ -2,9 +2,9 @@ generator client {
   provider = "prisma-client-js"
 }
 
-generator erd {
-  provider = "prisma-erd-generator"
-}
+// generator erd {
+//   provider = "prisma-erd-generator"
+// }
 
 datasource db {
   provider = "mysql"
@@ -135,8 +135,8 @@ model Category {
   id                Int      @id @default(autoincrement())
   name              String   @unique
   nameAr            String? // Arabic name
-  description       String?
-  descriptionAr     String? // Arabic description
+  description       String?  @db.LongText
+  descriptionAr     String?  @db.LongText
   imageUrl          String?
   iconUrl           String?
   parentId          Int?
@@ -151,6 +151,7 @@ model Category {
   products Product[]
   brands   BrandCategory[]
 
+  @@fulltext([name, nameAr, description, descriptionAr])
   @@map("categories")
 }
 
@@ -159,8 +160,8 @@ model Product {
   id            String   @id @default(uuid())
   name          String
   nameAr        String? // Arabic name
-  description   String?
-  descriptionAr String? // Arabic description
+  description   String?  @db.LongText
+  descriptionAr String?  @db.LongText
   price         Float
   costPrice     Float?
   stock         Int      @default(0)
@@ -189,6 +190,7 @@ model Product {
   wishlist   WishlistItem[]
   attributes ProductAttribute[]
 
+  @@fulltext([name, nameAr, description, descriptionAr])
   @@map("products")
 }
 
@@ -220,8 +222,8 @@ model Brand {
   name          String  @unique
   slug          String  @unique
   nameAr        String? // Arabic name
-  description   String?
-  descriptionAr String? // Arabic description
+  description   String? @db.LongText
+  descriptionAr String? @db.LongText
   logoUrl       String?
   coverUrl      String?
   isActive      Boolean @default(true)
@@ -234,6 +236,7 @@ model Brand {
   updatedAt  DateTime        @updatedAt
   categories BrandCategory[]
 
+  @@fulltext([name, nameAr, description, descriptionAr])
   @@map("brands")
 }
 
@@ -273,7 +276,7 @@ model Supplier {
 
 // Orders
 model Order {
-  id              String        @id @default(uuid())
+  id              Int           @id @default(autoincrement())
   orderNumber     String        @unique
   customerId      String
   totalAmount     Float
@@ -281,8 +284,10 @@ model Order {
   discount        Float         @default(0)
   taxAmount       Float         @default(0)
   status          OrderStatus   @default(PENDING)
-  paymentMethod   String?
+  paymentMethod   PaymentMethod @default(CASH_ON_DELIVERY)
   paymentStatus   PaymentStatus @default(PENDING)
+  paymentId       String?       @unique
+  paymentDetails  String?       @db.Text // JSON string with payment details
   shippingAddress String?
   notes           String?
   createdAt       DateTime      @default(now())
@@ -295,10 +300,17 @@ model Order {
   @@map("orders")
 }
 
+enum PaymentMethod {
+  CREDIT_CARD
+  PAYPAL
+  BANK_TRANSFER
+  CASH_ON_DELIVERY
+}
+
 // Order Items
 model OrderItem {
-  id        String   @id @default(uuid())
-  orderId   String
+  id        Int      @id @default(autoincrement())
+  orderId   Int
   productId String
   quantity  Int
   price     Float // Price at time of order

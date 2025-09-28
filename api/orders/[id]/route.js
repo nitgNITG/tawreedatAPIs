@@ -73,8 +73,12 @@ router.get("/:id", authorization, async (req, res) => {
   const id = req.params.id;
   const user = req.user;
   try {
-    const data = new FeatureApi(req).filter({ id }).fields().data;
-    const order = await prisma.order.findUnique(data);
+    const data = new FeatureApi(req)
+      .filter({
+        OR: [{ id: isNaN(+id) ? undefined : +id }, { orderNumber: id }],
+      })
+      .fields().data;
+    const order = await prisma.order.findFirst(data);
     if (!order)
       return res
         .status(404)
@@ -104,8 +108,10 @@ router.put("/:id", authorization, async (req, res) => {
 
   try {
     const query = new FeatureApi(req).fields().data;
-    const order = await prisma.order.findUnique({
-      where: { id },
+    const order = await prisma.order.findFirst({
+      where: {
+        OR: [{ id: isNaN(+id) ? undefined : +id }, { orderNumber: id }],
+      },
       include: { items: true },
     });
     if (!order)
@@ -156,7 +162,7 @@ router.put("/:id", authorization, async (req, res) => {
       }
 
       const updatedOrder = await tx.order.update({
-        where: { id },
+        where: { id: order.id },
         data,
         ...(query || {}),
       });
@@ -244,6 +250,7 @@ router.put("/:id", authorization, async (req, res) => {
       });
     }
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       message: getTranslation(lang, "internalError"),
       error: error.message,
@@ -256,12 +263,16 @@ router.delete("/:id", authorization, async (req, res) => {
   const lang = langReq(req);
   const id = req.params.id;
   try {
-    const order = await prisma.order.findUnique({ where: { id } });
+    const order = await prisma.order.findUnique({
+      where: {
+        OR: [{ id: isNaN(+id) ? undefined : +id }, { orderNumber: id }],
+      },
+    });
     if (!order)
       return res
         .status(404)
         .json({ message: getTranslation(lang, "notFound") });
-    await prisma.order.delete({ where: { id } });
+    await prisma.order.delete({ where: { id: order.id } });
     res.status(200).json({ message: getTranslation(lang, "deleted") });
   } catch (error) {
     res.status(500).json({

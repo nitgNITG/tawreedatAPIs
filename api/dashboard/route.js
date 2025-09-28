@@ -22,7 +22,8 @@ router.get("/", authorization, async (req, res) => {
       totalOnBoarding,
       totalAds,
       totalFaqs,
-      totalArticles
+      totalArticles,
+      totalBrands,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.category.count(),
@@ -32,6 +33,7 @@ router.get("/", authorization, async (req, res) => {
       prisma.ad.count(),
       prisma.faqs.count(),
       prisma.article.count(),
+      prisma.brand.count(),
     ]);
 
     const data = {
@@ -42,7 +44,8 @@ router.get("/", authorization, async (req, res) => {
       totalOnBoarding,
       totalAds,
       totalFaqs,
-      totalArticles
+      totalArticles,
+      totalBrands,
     };
     return res.status(200).json(data);
   } catch (error) {
