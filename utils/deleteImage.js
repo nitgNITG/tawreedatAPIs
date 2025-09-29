@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
+import { tr } from "zod/v4/locales";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,15 +15,14 @@ const deleteImage = async (fileUrl) => {
 
     // Extract the file path from URL (e.g., "/uploads/user/123/file.jpg" -> "uploads/user/123/file.jpg")
     let filePath;
-    if (fileUrl.startsWith("/uploads/")) {
+    if (fileUrl.includes("/uploads/")) {
       filePath = fileUrl.replace(/^\//, ""); // Remove leading slash
-    } else if (fileUrl.startsWith("http")) {
+    } else if (fileUrl.includes("http")) {
       // Handle full URLs by extracting the path part
       const url = new URL(fileUrl);
       filePath = url.pathname.replace(/^\//, "");
     } else {
-      // Already a relative path
-      filePath = fileUrl;
+      return true; // If the URL format is unexpected, skip deletion
     }
 
     // Create absolute path to the file
