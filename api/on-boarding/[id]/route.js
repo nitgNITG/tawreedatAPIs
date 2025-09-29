@@ -74,9 +74,9 @@ router
     const id = +req.params.id;
     try {
       const data = new FeatureApi(req).filter({ id }).fields().data;
-      const categories = await prisma.onBoarding.findUnique(data);
+      const onBoarding = await prisma.onBoarding.findUnique(data);
       return res.status(200).json({
-        categories,
+        onBoarding,
         message: getTranslation(lang, "success"),
       });
     } catch (error) {

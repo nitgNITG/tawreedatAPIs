@@ -11,12 +11,13 @@ const router = express.Router();
 
 const AdsStatus = z.enum(["Active", "Inactive"]);
 const AdsType = z.enum(["Home", "Popup"]);
+
 export const adsSchema = (lang) => {
   return z.object({
     title: z
       .string()
       .min(1, { message: getTranslation(lang, "ads_title_is_required") }),
-      
+
     titleAr: z
       .string()
       .min(1, { message: getTranslation(lang, "ads_titleAr_is_required") }),
@@ -55,7 +56,7 @@ export const adsSchema = (lang) => {
     closable: z
       .union([z.string(), z.boolean()])
       .transform((el) => {
-        return el == "true";
+        return el === "true";
       })
       .optional(),
     displayDuration: z
@@ -105,7 +106,7 @@ router
       const imageUrl = req.file;
       if (!imageUrl) {
         return res
-          .status(200)
+          .status(400)
           .json({ message: getTranslation(lang, "ads_image_required") });
       }
       data.imageUrl = await uploadImage(imageUrl, `/ads`);

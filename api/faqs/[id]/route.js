@@ -13,8 +13,10 @@ router
     const id = +req.params.id;
     try {
       const data = new FeatureApi(req).filter({ id }).fields().data;
-      const faqs = await prisma.faqs.findUnique(data);
-      return res.status(200).json({ faqs });
+      const faq = await prisma.faqs.findUnique(data);
+      return res
+        .status(200)
+        .json({ faq, message: getTranslation(lang, "success") });
     } catch (error) {
       console.error(error);
       res.status(400).json({

@@ -108,6 +108,7 @@ router
 
   .delete(authorization, async (req, res) => {
     const lang = langReq(req);
+    const id = +req.params.id;
     try {
       const admin = req.user;
       if (admin?.role !== "ADMIN") {
@@ -116,7 +117,6 @@ router
           .json({ message: getTranslation(lang, "not_allowed") });
       }
 
-      const id = +req.params.id;
       const ad = await prisma.ad.findUnique({
         where: { id },
       });

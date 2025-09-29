@@ -17,6 +17,7 @@ router
   .route("/:contactId")
   .get(authorization, async (req, res) => {
     const lang = langReq(req);
+    const id = +req.params.contactId;
     try {
       const user = req.user;
       if (user.role !== "ADMIN") {
@@ -24,6 +25,17 @@ router
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });
       }
+      const contact = await prisma.contactUs.findUnique({
+        where: { id },
+      });
+      if (!contact) {
+        return res.status(404).json({
+          message: getTranslation(lang, "contact_not_found"),
+        });
+      }
+      res
+        .status(200)
+        .json({ contact, message: getTranslation(lang, "success") });
     } catch (error) {
       console.error(error);
       res.status(400).json({
