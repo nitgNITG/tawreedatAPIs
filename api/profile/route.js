@@ -109,9 +109,21 @@ router
             .status(400)
             .json({ message: getTranslation(lang, "phone_already_used") });
       }
+
+      if (data.email) {
+        const isEmail = await prisma.user.findFirst({
+          where: { email: data.email, AND: { NOT: { id } } },
+        });
+        if (isEmail)
+          return res
+            .status(400)
+            .json({ message: getTranslation(lang, "email_already_used") });
+      }
+
+      // Handle image upload
       const file = req.file;
       if (file) {
-        data.imageUrl = await uploadImage(file, `/users/${Date.now()}`);
+        data.imageUrl = await uploadImage(file, `/users`);
         await deleteImage(isUser.imageUrl);
       }
       if (data.deleteImage && !file) {

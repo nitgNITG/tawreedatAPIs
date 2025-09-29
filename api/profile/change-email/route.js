@@ -2,9 +2,7 @@ import express from "express";
 import { z } from "zod";
 import prisma from "../../../prisma/client.js";
 import authorization from "../../../middleware/authorization.js";
-import getTranslation, {
-  langReq,
-} from "../../../middleware/getTranslation.js";
+import getTranslation, { langReq } from "../../../middleware/getTranslation.js";
 import generateCode from "../../../utils/generateCode.js";
 
 export const userSchema = (lang) => {
@@ -53,16 +51,23 @@ router.route("/").patch(authorization, async (req, res) => {
         message: getTranslation(lang, "email_in_use"),
       });
     }
-    const code = generateCode(6);
+    // const code = generateCode(6);
 
-    await prisma.userVerify.create({
-      data: {
-        code: String(code),
-        userId: id,
-        email: data.email,
-      },
+    // await prisma.userVerify.create({
+    //   data: {
+    //     code: String(code),
+    //     userId: id,
+    //     email: data.email,
+    //   },
+    // });
+    await prisma.user.update({
+      where: { id },
+      data: { email: data.email },
     });
-    res.status(200).json({ message: getTranslation(lang, "check_email") });
+    res
+      .status(200)
+      .json({ message: getTranslation(lang, "success"), newEmail: data.email });
+    // res.status(200).json({ message: getTranslation(lang, "check_email") });
   } catch (error) {
     console.error(error);
     res.status(400).json({

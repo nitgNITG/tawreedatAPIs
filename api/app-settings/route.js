@@ -84,11 +84,10 @@ const router = express.Router();
 
 router
   .route("/")
-  .get(authorization, async (req, res) => {
+  .get(async (req, res) => {
     const lang = langReq(req);
     try {
       const query = new FeatureApi(req).fields().data;
-
       const settings = await prisma.applicationSettings.findFirst({
         ...(query ?? {}),
       });
@@ -102,6 +101,7 @@ router
       return res
         .status(200)
         .json({ settings, message: getTranslation(lang, "success") });
+        
     } catch (error) {
       console.error("Error fetching app settings:", error);
       return res.status(500).json({
