@@ -2,7 +2,7 @@ import express from "express";
 import { z } from "zod";
 import prisma from "../../prisma/client.js";
 import deleteImage from "../../utils/deleteImage.js";
-import uploadImage, { uploadImage2 } from "../../utils/uploadImage.js";
+import uploadImage from "../../utils/uploadImage.js";
 import authorization from "../../middleware/authorization.js";
 import getTranslation, { langReq } from "../../middleware/getTranslation.js";
 import upload from "../../middleware/upload.js";
