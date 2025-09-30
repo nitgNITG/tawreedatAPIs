@@ -143,18 +143,28 @@ router
       //   data.imageUrl = null; // Set imageUrl to null in the data
       //   delete data.deleteImage; // Remove deleteImage from the data object
       // }
+      console.log("User data to be updated:", data);
 
       // Update user in Prisma
-      const updatedUser = await prisma.user.update({
-        where: { id },
-        data,
-      });
+      try {
+        const updatedUser = await prisma.user.update({
+          where: { id },
+          data,
+        });
+        console.log("User updated successfully:", updatedUser);
 
-      delete user.password;
-      delete user.fcmToken;
-      res
-        .status(200)
-        .json({ message: getTranslation(lang, "success"), updatedUser });
+        delete user.password;
+        delete user.fcmToken;
+        res
+          .status(200)
+          .json({ message: getTranslation(lang, "success"), updatedUser });
+      } catch (error) {
+        console.error("Prisma update error:", error);
+        res.status(500).json({
+          message: getTranslation(lang, "internalError"),
+          error: error.message,
+        });
+      }
     } catch (error) {
       console.error(error);
       res.status(400).json({
