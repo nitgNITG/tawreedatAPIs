@@ -5,12 +5,13 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-console.log("file:", __filename);
-console.log("uploadImage.js __dirname:", __dirname);
 
 const uploadImage = async (file, destination) => {
   try {
+    // Create uploads directory and subdirectory if it doesn't exist
     const uploadsDir = path.join(__dirname, "..", "uploads");
+
+    // Parse destination to create subdirectory (e.g., "/user" -> "user")
     const subDir = destination
       ? destination.replace(/^\//, "").split("/")[0]
       : "";
@@ -18,43 +19,40 @@ const uploadImage = async (file, destination) => {
 
     await fs.mkdir(fullUploadDir, { recursive: true });
 
+    // Generate unique filename with timestamp
     const timestamp = Date.now();
     const fileExtension = file.originalname.split(".").pop().toLowerCase();
     const fileName = `${timestamp}_${Math.random()
       .toString(36)
       .substring(2)}.${fileExtension}`;
+
+    // Create the full file path
     const filePath = path.join(fullUploadDir, fileName);
 
     let buffer;
-
-    try {
-      if (fileExtension === "png") {
-        buffer = await sharp(file.buffer).png({ quality: 80 }).toBuffer();
-      } else if (fileExtension === "webp") {
-        buffer = await sharp(file.buffer).webp({ quality: 80 }).toBuffer();
-      } else if (["jpeg", "jpg"].includes(fileExtension)) {
-        buffer = await sharp(file.buffer).jpeg({ quality: 80 }).toBuffer();
-      } else if (["gif", "svg"].includes(fileExtension)) {
-        buffer = file.buffer; // no processing
-      } else {
-        throw new Error(`Unsupported file type: ${fileExtension}`);
-      }
-    } catch (sharpError) {
-      console.error("Sharp failed:", sharpError.message);
-      throw new Error("Image processing failed");
+    if (fileExtension === "png") {
+      buffer = await sharp(file.buffer).png({ quality: 80 }).toBuffer();
+    } else if (fileExtension === "webp") {
+      buffer = await sharp(file.buffer).webp({ quality: 80 }).toBuffer();
+    } else if (fileExtension === "gif" || fileExtension === "svg") {
+      buffer = file.buffer;
+    } else if (fileExtension === "jpeg" || fileExtension === "jpg") {
+      buffer = await sharp(file.buffer).jpeg({ quality: 80 }).toBuffer();
+    } else {
+      throw new Error("Unsupported file type");
     }
 
+    // Write the buffer to file
     await fs.writeFile(filePath, buffer);
 
-    const imagePath = subDir
+    // Return the relative URL path including subdirectory
+    const publicUrl = subDir
       ? `${process.env.BASE_URL}/uploads/${subDir}/${fileName}`
       : `${process.env.BASE_URL}/uploads/${fileName}`;
-    console.log("Uploaded image path:", imagePath);
-
-    return imagePath;
+    return publicUrl;
   } catch (error) {
-    console.error("Upload failed:", error.message);
-    return null; // safer than throw, so routes can handle gracefully
+    console.error("Error in uploadImage function:", error);
+    throw new Error(`Image processing failed: ${error.message}`);
   }
 };
 

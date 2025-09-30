@@ -58,7 +58,7 @@ model User {
   fullname            String      @db.VarChar(50)
   phone               String?     @unique @db.VarChar(20)
   password            String?     @db.VarChar(100)
-  imageUrl            String?     @db.VarChar(200)
+  imageUrl            String?     @db.VarChar(250)
   lang                Language    @default(AR)
   lastLoginAt         DateTime    @default(now())
   isActive            Boolean     @default(true)
