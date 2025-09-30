@@ -2,7 +2,7 @@ import express from "express";
 import { z } from "zod";
 import prisma from "../../prisma/client.js";
 import deleteImage from "../../utils/deleteImage.js";
-import uploadImage from "../../utils/uploadImage.js";
+import uploadImage, { uploadImage2 } from "../../utils/uploadImage.js";
 import authorization from "../../middleware/authorization.js";
 import getTranslation, { langReq } from "../../middleware/getTranslation.js";
 import upload from "../../middleware/upload.js";
@@ -123,7 +123,9 @@ router
       // Handle image upload
       const file = req.file;
       if (file) {
-        data.imageUrl = await uploadImage(file, `/users`);
+        // data.imageUrl = await uploadImage(file, `/users`);
+        data.imageUrl = await uploadImage2(file);
+        console.log("image uploaded successfully", data.imageUrl);
         // await deleteImage(isUser.imageUrl).catch((err) => {
         //   console.error(
         //     `Failed to delete image, continuing anyway: ${err.message}`
