@@ -124,24 +124,24 @@ router
       const file = req.file;
       if (file) {
         data.imageUrl = await uploadImage(file, `/users`);
-        await deleteImage(isUser.imageUrl).catch((err) => {
-          console.error(
-            `Failed to delete image, continuing anyway: ${err.message}`
-          );
-          // Continue with request processing even if image deletion fails
-        });
+        // await deleteImage(isUser.imageUrl).catch((err) => {
+        //   console.error(
+        //     `Failed to delete image, continuing anyway: ${err.message}`
+        //   );
+        //   // Continue with request processing even if image deletion fails
+        // });
       }
-      if (data.deleteImage && !file) {
-        // If deleteImage is true, remove the imageUrl from the user
-        await deleteImage(isUser.imageUrl).catch((err) => {
-          console.error(
-            `Failed to delete image, continuing anyway: ${err.message}`
-          );
-          // Continue with request processing even if image deletion fails
-        });
-        data.imageUrl = null; // Set imageUrl to null in the data
-        delete data.deleteImage; // Remove deleteImage from the data object
-      }
+      // if (data.deleteImage && !file) {
+      //   // If deleteImage is true, remove the imageUrl from the user
+      //   await deleteImage(isUser.imageUrl).catch((err) => {
+      //     console.error(
+      //       `Failed to delete image, continuing anyway: ${err.message}`
+      //     );
+      //     // Continue with request processing even if image deletion fails
+      //   });
+      //   data.imageUrl = null; // Set imageUrl to null in the data
+      //   delete data.deleteImage; // Remove deleteImage from the data object
+      // }
 
       // Update user in Prisma
       const updatedUser = await prisma.user.update({
