@@ -51,13 +51,13 @@ app.set("query parser", "extended");
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
-// app.use(
-//   "/uploads",
-//   express.static(
-//     path.join(path.dirname(new URL(import.meta.url).pathname), "uploads")
-//   )
-// );
+// app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+app.use(
+  "/uploads",
+  express.static(
+    path.join(path.dirname(new URL(import.meta.url).pathname), "uploads")
+  )
+);
 
 //routers
 const loadRoutes = async (folderPath, baseRoute = "/api") => {
