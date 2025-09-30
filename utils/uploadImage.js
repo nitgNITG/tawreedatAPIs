@@ -46,9 +46,12 @@ const uploadImage = async (file, destination) => {
 
     await fs.writeFile(filePath, buffer);
 
-    return subDir
+    const imagePath = subDir
       ? `${process.env.BASE_URL}/uploads/${subDir}/${fileName}`
       : `${process.env.BASE_URL}/uploads/${fileName}`;
+    console.log("Uploaded image path:", imagePath);
+
+    return imagePath;
   } catch (error) {
     console.error("Upload failed:", error.message);
     return null; // safer than throw, so routes can handle gracefully

@@ -123,8 +123,7 @@ router
       // Handle image upload
       const file = req.file;
       if (file) {
-        // data.imageUrl = await uploadImage(file, `/users`);
-        data.imageUrl = await uploadImage2(file);
+        data.imageUrl = await uploadImage(file, `/users`);
         console.log("image uploaded successfully", data.imageUrl);
         // await deleteImage(isUser.imageUrl).catch((err) => {
         //   console.error(
