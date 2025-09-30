@@ -152,10 +152,14 @@ router
       // }
 
       // Update user in Prisma
+      console.log("data to update:\n", data);
       const updatedUser = await prisma.user.update({
         where: { id },
         data,
       });
+      console.log("-------------------------:\n");
+
+      console.log("updatedUser:\n", updatedUser);
 
       delete updatedUser.password;
       delete updatedUser.fcmToken;
