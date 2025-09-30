@@ -55,47 +55,4 @@ const uploadImage = async (file, destination) => {
   }
 };
 
-export const uploadImage2 = async (file) => {
-  try {
-    const uploadsDir = path.join(__dirname, "..", "uploads2");
-    console.log("uploadsDir:", uploadsDir);
-
-    await fs.mkdir(uploadsDir);
-
-    const timestamp = Date.now();
-    const fileExtension = file.originalname.split(".").pop().toLowerCase();
-    const fileName = `${timestamp}_${Math.random()
-      .toString(36)
-      .substring(2)}.${fileExtension}`;
-    const filePath = path.join(uploadsDir, fileName);
-
-    let buffer;
-
-    try {
-      if (fileExtension === "png") {
-        buffer = await sharp(file.buffer).png({ quality: 80 }).toBuffer();
-      } else if (fileExtension === "webp") {
-        buffer = await sharp(file.buffer).webp({ quality: 80 }).toBuffer();
-      } else if (["jpeg", "jpg"].includes(fileExtension)) {
-        buffer = await sharp(file.buffer).jpeg({ quality: 80 }).toBuffer();
-      } else if (["gif", "svg"].includes(fileExtension)) {
-        buffer = file.buffer; // no processing
-      } else {
-        throw new Error(`Unsupported file type: ${fileExtension}`);
-      }
-    } catch (sharpError) {
-      console.error("Sharp failed:", sharpError.message);
-      throw new Error("Image processing failed");
-    }
-
-    const ts = await fs.writeFile(filePath, buffer);
-    console.log("ts:", ts);
-
-    return `${process.env.BASE_URL}/uploads2/${fileName}`;
-  } catch (error) {
-    console.error("Upload failed:", error.message);
-    return null;
-  }
-};
-
 export default uploadImage;
