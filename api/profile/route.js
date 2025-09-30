@@ -123,9 +123,15 @@ router
       // Handle image upload
       const file = req.file;
       if (file) {
-        data.imageUrl = "test";
-        // data.imageUrl = await uploadImage(file, `/users`);
-        console.log("image uploaded successfully", data.imageUrl);
+        try {
+          data.imageUrl = await uploadImage(file, `/users`);
+          console.log("image uploaded successfully", data.imageUrl);
+        } catch (error) {
+          console.error("Image upload failed:", error.message);
+          return res
+            .status(500)
+            .json({ message: getTranslation(lang, "image_upload_failed") });
+        }
         // await deleteImage(isUser.imageUrl).catch((err) => {
         //   console.error(
         //     `Failed to delete image, continuing anyway: ${err.message}`
