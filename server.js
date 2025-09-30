@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from "url";
 import path from "path";
 import fs from "fs";
 import cookieParser from "cookie-parser";
+import cleanupTempFiles from "./utils/cleanupTemp.js";
 
 //create app
 const app = express();
@@ -111,3 +112,5 @@ const loadRoutes = async (folderPath, baseRoute = "/api") => {
     console.log("listening on port", port);
   });
 })();
+
+cleanupTempFiles();
