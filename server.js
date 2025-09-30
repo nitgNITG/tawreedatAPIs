@@ -102,7 +102,11 @@ const loadRoutes = async (folderPath, baseRoute = "/api") => {
   await loadRoutes("./api");
 
   const port = process.env.PORT || 3120;
-
+  // create a error middleware
+  app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ message: "Internal Server Error" });
+  });
   app.listen(port, () => {
     console.log("listening on port", port);
   });
