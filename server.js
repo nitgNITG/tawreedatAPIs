@@ -6,8 +6,6 @@ import { fileURLToPath, pathToFileURL } from "url";
 import path from "path";
 import fs from "fs";
 import cookieParser from "cookie-parser";
-import { info } from "console";
-import prisma from "./prisma/client.js";
 
 //create app
 const app = express();
@@ -103,33 +101,9 @@ const loadRoutes = async (folderPath, baseRoute = "/api") => {
 (async () => {
   await loadRoutes("./api");
 
-  const port = process.env.PORT || 3100;
+  const port = process.env.PORT || 3120;
 
   app.listen(port, () => {
     console.log("listening on port", port);
   });
 })();
-
-// // Seed data for colors and countries
-// export const colorSeeds = [
-//   { id: "1", name: "Red", code: "#FF0000" },
-//   { id: "2", name: "Green", code: "#00FF00" },
-//   { id: "3", name: "Blue", code: "#0000FF" },
-//   { id: "4", name: "Black", code: "#000000" },
-//   { id: "5", name: "White", code: "#FFFFFF" },
-// ];
-
-// export const countrySeeds = [
-//   { id: "1", name: "United States", code: "USA", phoneCode: "+1" },
-//   { id: "2", name: "Saudi Arabia", code: "SAU", phoneCode: "+966" },
-//   { id: "3", name: "Egypt", code: "EGY", phoneCode: "+20" },
-//   { id: "4", name: "United Kingdom", code: "GBR", phoneCode: "+44" },
-//   { id: "5", name: "France", code: "FRA", phoneCode: "+33" },
-// ];
-
-// const seeds = await Promise.all([
-//   prisma.color.createMany({ data: colorSeeds }),
-//   prisma.country.createMany({ data: countrySeeds }),
-// ]);
-
-// info("Seed data created successfully:", seeds);
