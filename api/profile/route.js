@@ -157,8 +157,8 @@ router
         data,
       });
 
-      delete user.password;
-      delete user.fcmToken;
+      delete updatedUser.password;
+      delete updatedUser.fcmToken;
       res
         .status(200)
         .json({ message: getTranslation(lang, "success"), updatedUser });
