@@ -91,7 +91,6 @@ router
         });
       }
       const data = resultValidation.data;
-
       const isUser = await prisma.user.findUnique({
         where: { id },
       });
@@ -103,7 +102,7 @@ router
 
       if (data.phone) {
         const isPhone = await prisma.user.findFirst({
-          where: { phone: data.phone, NOT: { id } },
+          where: { phone: data.phone, AND: { NOT: { id } } },
         });
         if (isPhone)
           return res
@@ -113,7 +112,7 @@ router
 
       if (data.email) {
         const isEmail = await prisma.user.findFirst({
-          where: { email: data.email, NOT: { id } },
+          where: { email: data.email, AND: { NOT: { id } } },
         });
         if (isEmail)
           return res
@@ -124,41 +123,42 @@ router
       // Handle image upload
       const file = req.file;
       if (file) {
-        const uploadedPath = await uploadImage(file, `/users`);
-        if (!uploadedPath) {
-          return res.status(500).json({
-            message: getTranslation(lang, "image_upload_failed"),
-          });
-        }
-        data.imageUrl = uploadedPath;
+        data.imageUrl = "test";
+        // data.imageUrl = await uploadImage(file, `/users`);
         console.log("image uploaded successfully", data.imageUrl);
+        // await deleteImage(isUser.imageUrl).catch((err) => {
+        //   console.error(
+        //     `Failed to delete image, continuing anyway: ${err.message}`
+        //   );
+        //   // Continue with request processing even if image deletion fails
+        // });
       }
+      // if (data.deleteImage && !file) {
+      //   // If deleteImage is true, remove the imageUrl from the user
+      //   await deleteImage(isUser.imageUrl).catch((err) => {
+      //     console.error(
+      //       `Failed to delete image, continuing anyway: ${err.message}`
+      //     );
+      //     // Continue with request processing even if image deletion fails
+      //   });
+      //   data.imageUrl = null; // Set imageUrl to null in the data
+      //   delete data.deleteImage; // Remove deleteImage from the data object
+      // }
 
-      console.log("User data to be updated:", data);
-
-      // Update user in Prisma with timeout handling
-      const updatedUser = await Promise.race([
-        prisma.user.update({
-          where: { id },
-          data,
-        }),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Database timeout")), 25000)
-        ),
-      ]);
-
-      // Remove sensitive fields
-      const safeUser = { ...updatedUser };
-      delete safeUser.password;
-      delete safeUser.fcmToken;
-
-      return res.status(200).json({
-        message: getTranslation(lang, "success"),
-        user: safeUser,
+      // Update user in Prisma
+      const updatedUser = await prisma.user.update({
+        where: { id },
+        data,
       });
+
+      delete user.password;
+      delete user.fcmToken;
+      res
+        .status(200)
+        .json({ message: getTranslation(lang, "success"), updatedUser });
     } catch (error) {
-      console.error("Route error:", error);
-      return res.status(500).json({
+      console.error(error);
+      res.status(400).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
