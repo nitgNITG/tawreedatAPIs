@@ -36,14 +36,13 @@ const allowedHosts = process?.env?.HOSTS_URL?.split(",");
 //     }
 // });
 const corsOptions = {
-  origin: true,
+  origin: "*",
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "Accept-Language"],
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); 
 app.use(express.json());
 
 // Set query parser to handle nested objects like createdAt[gte]
