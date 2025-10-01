@@ -177,6 +177,8 @@ model Product {
   categoryId    Int
   supplierId    String?
   brandId       Int?
+  rating        Float?   @default(0.0)
+  totalReviews  Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -342,13 +344,14 @@ model CartItem {
 
 // Product Reviews
 model Review {
-  id        String   @id @default(uuid())
+  id        String       @id @default(uuid())
   userId    String
   productId String
-  rating    Int // 1-5 stars
+  rating    Float // 1-5 stars
   comment   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status    ReviewStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   // Relations
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -356,6 +359,12 @@ model Review {
 
   @@unique([userId, productId])
   @@map("reviews")
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 // Wishlist
@@ -476,14 +485,16 @@ model ApplicationSettings {
 }
 
 model OnBoarding {
-  id        Int      @id @default(autoincrement())
-  imageUrl  String?
-  title     String
-  titleAr   String? // Arabic title
-  content   String
-  contentAr String? // Arabic content
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  imageUrl   String?
+  title      String
+  titleAr    String? // Arabic title
+  subtitle   String?
+  subtitleAr String? // Arabic subtitle
+  content    String?
+  contentAr  String? // Arabic content
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model ContactUs {

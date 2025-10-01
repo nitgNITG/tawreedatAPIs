@@ -13,15 +13,11 @@ export const onBoardingSchema = (lang) => {
     title: z.string({
       message: getTranslation(lang, "onBoarding_title_required"),
     }),
-    titleAr: z.string({
-      message: getTranslation(lang, "onBoarding_titleAr_required"),
-    }),
-    content: z.string({
-      message: getTranslation(lang, "onBoarding_content_required"),
-    }),
-    contentAr: z.string({
-      message: getTranslation(lang, "onBoarding_contentAr_required"),
-    }),
+    titleAr: z.string().optional(),
+    subtitle: z.string().optional(),
+    subtitleAr: z.string().optional(),
+    content: z.string().optional(),
+    contentAr: z.string().optional()
   });
 };
 router
