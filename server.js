@@ -43,6 +43,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); 
 app.use(express.json());
 
 // Set query parser to handle nested objects like createdAt[gte]
