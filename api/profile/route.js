@@ -123,46 +123,22 @@ router
       // Handle image upload
       const file = req.file;
       if (file) {
-        try {
-          data.imageUrl = await uploadImage(file, `/users`);
-          console.log("image uploaded successfully", data.imageUrl);
-        } catch (error) {
-          console.error("Image upload failed:", error.message);
-          return res
-            .status(500)
-            .json({ message: getTranslation(lang, "image_upload_failed") });
-        }
-        // await deleteImage(isUser.imageUrl).catch((err) => {
-        //   console.error(
-        //     `Failed to delete image, continuing anyway: ${err.message}`
-        //   );
-        //   // Continue with request processing even if image deletion fails
-        // });
+        data.imageUrl = await uploadImage(file, `/users`);
+        await deleteImage(isUser.imageUrl);
       }
-      // if (data.deleteImage && !file) {
-      //   // If deleteImage is true, remove the imageUrl from the user
-      //   await deleteImage(isUser.imageUrl).catch((err) => {
-      //     console.error(
-      //       `Failed to delete image, continuing anyway: ${err.message}`
-      //     );
-      //     // Continue with request processing even if image deletion fails
-      //   });
-      //   data.imageUrl = null; // Set imageUrl to null in the data
-      //   delete data.deleteImage; // Remove deleteImage from the data object
-      // }
+      if (data.deleteImage && !file) {
+        // If deleteImage is true, remove the imageUrl from the user
+        await deleteImage(isUser.imageUrl);
+        data.imageUrl = null; // Set imageUrl to null in the data
+        delete data.deleteImage; // Remove deleteImage from the data object
+      }
 
       // Update user in Prisma
-      console.log("data to update:\n", data);
       const updatedUser = await prisma.user.update({
         where: { id },
         data,
+        omit: { password: true, fcmToken: true },
       });
-      console.log("-------------------------:\n");
-
-      console.log("updatedUser:\n", updatedUser);
-
-      delete updatedUser.password;
-      delete updatedUser.fcmToken;
       res
         .status(200)
         .json({ message: getTranslation(lang, "success"), updatedUser });
