@@ -348,7 +348,7 @@ model Review {
   userId    String
   productId String
   rating    Float // 1-5 stars
-  comment   String?
+  comment   String?      @db.LongText
   status    ReviewStatus @default(PENDING)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt

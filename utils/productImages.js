@@ -4,7 +4,7 @@ const parseProductImages = (product) => {
       ...product,
       images: product.images ? JSON.parse(product.images) : [],
     };
-  }
+  }  
   return product;
 };
 

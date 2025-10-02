@@ -54,7 +54,7 @@ router
         .status(200)
         .json({ message: getTranslation(lang, "success"), review });
 
-      await updateProductRatings(data);
+      await updateProductRatings({ productId: review.productId });
     } catch (error) {
       console.error(error);
       res.status(400).json({

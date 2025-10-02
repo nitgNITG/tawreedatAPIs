@@ -18,7 +18,7 @@ router.route("/:id/reviews").get(async (req, res) => {
       .skip()
       .limit(10)
       .keyword(
-        ["user.fullname", "user.email", "user.phone", "content"],
+        ["user.fullname", "user.email", "user.phone", "comment"],
         "OR"
       ).data;
     data.where.status = "APPROVED";

@@ -24,7 +24,7 @@ router.route("/:id/orders").get(authorization, async (req, res) => {
       .sort()
       .skip()
       .limit(10)
-      .keyword(["customer.name"], "OR").data;
+      .keyword(["orderNumber"], "OR").data;
 
     const [orders, totalCount, orderSums] = await Promise.all([
       prisma.order.findMany(data),

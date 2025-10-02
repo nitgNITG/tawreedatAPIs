@@ -53,7 +53,7 @@ router
         .sort()
         .skip()
         .limit(10)
-        .keyword(["customer.name"], "OR").data;
+        .keyword(["customer.fullname", "orderNumber"], "OR").data;
 
       const orders = await prisma.order.findMany(data);
       const totalCount = await prisma.order.count({ where: data.where });

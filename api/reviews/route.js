@@ -96,7 +96,7 @@ router
             "product.name",
             "product.sku",
             "product.nameAr",
-            "content",
+            "comment",
           ],
           "OR"
         ).data;
