@@ -1,87 +1,51 @@
 import express from "express";
 import jwt from "jsonwebtoken";
-import getTranslation, { langReq } from "../../../middleware/getTranslation.js";
 import prisma from "../../../prisma/client.js";
-import verifyAppleToken from "verify-apple-id-token";
-
-// import passport from "passport";
-// import { Strategy as AppleStrategy } from "passport-apple";
+import getTranslation, { langReq } from "../../../middleware/getTranslation.js";
+import * as jose from "jose";
 
 const router = express.Router();
-// passport.use(
-//   new AppleStrategy(
-//     {
-//       clientID: process.env.APPLE_CLIENT_ID,
-//       clientSecret: process.env.APPLE_CLIENT_SECRET,
-//       callbackURL: `${process.env.BASE_URL}/api/auth/apple/callback`,
-//     },
-//     async (accessToken, refreshToken, profile, done) => {
-//       try {
-//         let user = await prisma.user.findUnique({
-//           where: { email: profile.emails[0].value },
-//         });
 
-//         if (!user) {
-//           user = await prisma.user.create({
-//             data: {
-//               email: profile.emails[0].value,
-//               fullname: profile.displayName,
-//               imageUrl: profile.photos[0]?.value,
-//               loginType: "APPLE",
-//             },
-//           });
-//         }
+/**
+ * Verifies the Apple ID token using Apple's JWKS.
+ * @param {string} idToken - The ID token from Apple.
+ * @param {string} clientId - Your app's client_id (service ID).
+ * @param {string} [nonce] - Optional nonce if used in your sign-in flow.
+ * @returns {Promise<Object>} - The decoded JWT claims.
+ */
+export const verifyAppleToken = async ({ idToken, clientId, nonce }) => {
+  // Apple’s JWKS URL
+  const JWKS_URL = "https://appleid.apple.com/auth/keys";
 
-//         return done(null, user);
-//       } catch (err) {
-//         return done(err, null);
-//       }
-//     }
-//   )
-// );
+  // Create JWKS client
+  const JWKS = jose.createRemoteJWKSet(new URL(JWKS_URL));
 
-// router.get(
-//   "/",
-//   passport.authenticate("apple", { scope: ["email", "profile"] })
-// );
-// router.get(
-//   "/callback",
-//   passport.authenticate("apple", {
-//     session: false,
-//     failureRedirect: "/",
-//   }),
-//   (req, res) => {
-//     const token = jwt.sign(
-//       {
-//         id: req.user.id,
-//         email: req.user.email,
-//         role: req.user.role,
-//       },
-//       process.env.SECRET_KEY,
-//       { expiresIn: process.env.JWT_EXPIRY || "7d" }
-//     );
-//     res.json({ success: true, token, user: req.user });
-//   }
-// );
+  // Verify the JWT
+  const { payload } = await jose.jwtVerify(idToken, JWKS, {
+    issuer: "https://appleid.apple.com",
+    audience: clientId, // must match your Apple service ID
+  });
+
+  // if (nonce && payload.nonce && payload.nonce !== nonce) {
+  //   throw new Error("Nonce mismatch");
+  // }
+
+  return payload;
+};
 
 router.post("/verify", async (req, res) => {
   try {
     const lang = langReq(req);
-    const { idToken, nonce } = req.body;
+    const { idToken, fullname } = req.body;
 
     if (!idToken) {
       return res.status(400).json({ message: "Missing Apple ID token" });
     }
 
-
-
-    // Verify the token with Apple
-    // The library handles fetching Apple's public keys for verification
+    // Verify the Apple token
     const jwtClaims = await verifyAppleToken({
       idToken,
-      clientId: process.env.APPLE_APP_ID,
-      // The nonce is an optional but highly recommended security feature.
-      // If your client sends a nonce, you should verify it here.
+      clientId: process.env.AUTH_APPLE_ID,
       // nonce,
     });
 
@@ -92,45 +56,43 @@ router.post("/verify", async (req, res) => {
       return res.status(400).json({ message: "Invalid Apple token" });
     }
 
-    // Apple only sends the user's name on the *first* sign-in.
-    // Your client should handle this and send the name with the idToken on the first request.
-    const fullname = req.body.fullname;
-
-    // Find user by their unique Apple ID
-    let user = await prisma.user.findUnique({
-      where: { email },
-    });
-    // let user = await prisma.user.findUnique({
-    //   where: { id: appleUserId },
-    // });
+    // Find or create user
+    let user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
-      // Create a new user since one does not exist
-      // Note: `fullname` may be null if it's not the first sign-in.
       user = await prisma.user.create({
         data: {
-          // id: appleUserId, // Store the unique Apple ID
           email,
-          fullname,
+          fullname: fullname || "Apple User",
           loginType: "APPLE",
+          // appleId: appleUserId, // optional but recommended
         },
       });
     }
 
-    // Generate your own JWT for your application
+    // Create app JWT
     const token = jwt.sign(
       {
         userId: user.id,
         role: user.role,
       },
-      process.env.SECRET_KEY
+      process.env.SECRET_KEY,
+      { expiresIn: "7d" }
     );
 
-    console.log("Generated JWT:", token);
-    res.status(200).json({ message: "Login successful", token, user });
+    console.log("✅ Apple login successful for:", email);
+
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      user,
+    });
   } catch (error) {
-    console.error("Apple login error:", error);
-    res.status(500).json({ message: "Authentication failed", error });
+    console.error("❌ Apple login error:", error);
+    res.status(401).json({
+      message: "Invalid Apple token",
+      error: error.message || error,
+    });
   }
 });
 
