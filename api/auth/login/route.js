@@ -88,6 +88,13 @@ router.post("/", async (req, res) => {
         .status(400)
         .json({ message: getTranslation(lang, "user_isBlocked") });
 
+    if (!user.password && user.loginType !== "LOCAL") {
+      return res.status(400).json({
+        message: getTranslation(lang, "wrong_login_type"),
+        loginType: user.loginType,
+      });
+    }
+
     // const settings = await prisma.aboutApp.findUnique({
     //   where: { id: "about-app" },
     //   select: {
