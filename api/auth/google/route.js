@@ -102,7 +102,7 @@ import { OAuth2Client } from "google-auth-library";
 import prisma from "../../../prisma/client.js";
 
 const router = express.Router();
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const client = new OAuth2Client();
 
 router.post("/verify", async (req, res) => {
   try {
@@ -114,7 +114,10 @@ router.post("/verify", async (req, res) => {
     // Verify token with Google
     const ticket = await client.verifyIdToken({
       idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
+      audience: [
+        process.env.GOOGLE_WEB_CLIENT_ID,
+        process.env.GOOGLE_FLUTTER_CLIENT_ID,
+      ],
     });
     const payload = ticket.getPayload();
     const email = payload.email;
