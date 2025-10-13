@@ -470,6 +470,8 @@ model AboutApp {
 model ApplicationSettings {
   id                                 String   @id
   numberOfProductsOnHomepage         Int      @default(3)
+  numberOfAdsOnHomepage              Int      @default(3)
+  numberOfBrandsOnHomepage              Int      @default(3)
   numberOfCategoriesOnHomepage       Int      @default(3)
   numberOfFeaturedProductsOnHomepage Int      @default(10)
   numberOfLatestOffersOnHomepage     Int      @default(3)
