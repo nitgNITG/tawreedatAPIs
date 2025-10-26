@@ -48,6 +48,20 @@ const applicationSettingsSchema = (lang) => {
       })
       .min(1)
       .default(3),
+    numberOfAdsOnHomepage: z
+      .number({
+        required_error: getTranslation(lang, "numberOfAdsOnHomepageRequired"),
+        invalid_type_error: getTranslation(lang, "invalidNumber"),
+      })
+      .min(1)
+      .default(3),
+    numberOfBrandsOnHomepage: z
+      .number({
+        required_error: getTranslation(lang, "numberOfBrandsOnHomepageRequired"),
+        invalid_type_error: getTranslation(lang, "invalidNumber"),
+      })
+      .min(1)
+      .default(3),
 
     vat: z
       .number({

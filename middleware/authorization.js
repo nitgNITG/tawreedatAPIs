@@ -16,8 +16,8 @@ const authorization = async (req, res, next) => {
         .json({ message: getTranslation(lang, "provide_token") });
     } else {
       const token = req.headers.authorization.split(" ")[1];
-      const tokenParts = token.split(".");
-      if (tokenParts.length !== 3) {
+      const tokenParts = token?.split(".");
+      if (tokenParts?.length !== 3) {
         return res
           .status(400)
           .json({ message: getTranslation(lang, "invalid_token_format") });
