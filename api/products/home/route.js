@@ -115,6 +115,7 @@ router.route("/").get(async (req, res) => {
         // Return the structured object
         return {
           ...category,
+          limits,
           featured: parseProductsImages(featured),
           new: parseProductsImages(newProducts),
           latestOffers: parseProductsImages(latestOffers),
