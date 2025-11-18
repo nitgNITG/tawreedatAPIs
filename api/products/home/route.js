@@ -115,7 +115,6 @@ router.route("/").get(async (req, res) => {
         // Return the structured object
         return {
           ...category,
-          limits,
           featured: parseProductsImages(featured),
           new: parseProductsImages(newProducts),
           latestOffers: parseProductsImages(latestOffers),
@@ -124,7 +123,7 @@ router.route("/").get(async (req, res) => {
       })
     );
 
-    res.status(200).json(data);
+    res.status(200).json({ data, limits });
   } catch (error) {
     console.error("Home API Error:", error);
     res.status(500).json({
