@@ -490,8 +490,8 @@ router
       await prisma.brandCategory.upsert({
         where: {
           brandId_categoryId: {
-        brandId: data.brandId,
-        categoryId: data.categoryId,
+            brandId: data.brandId,
+            categoryId: data.categoryId,
           },
         },
         update: {},
@@ -519,7 +519,7 @@ router
       // });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
@@ -528,33 +528,11 @@ router
 
   .get(async (req, res) => {
     const lang = langReq(req);
-    try {
-      const { homePage, ...query } = req.query;
-      if (homePage) {
-        const {
-          numberOfProductsOnHomepage,
-          numberOfFeaturedProductsOnHomepage,
-          numberOfLatestOffersOnHomepage,
-          numberOfNewArrivalsOnHomepage,
-        } = await prisma.applicationSettings.findFirst({
-          select: {
-            numberOfProductsOnHomepage: true,
-            numberOfFeaturedProductsOnHomepage: true,
-            numberOfLatestOffersOnHomepage: true,
-            numberOfNewArrivalsOnHomepage: true,
-          },
-        });
-        let homePageType = numberOfProductsOnHomepage;
-        if (query.isFeatured) homePageType = numberOfFeaturedProductsOnHomepage;
-        if (query.createdAt === "true") {
-          delete query.createdAt;
-          homePageType = numberOfNewArrivalsOnHomepage;
-        }
-        if (query.offer) homePageType = numberOfLatestOffersOnHomepage;
 
-        query.limit = homePageType || 3;
-      }
+    try {
+      const { homePage, type, ...query } = req.query;
       const tempReq = { ...req, query };
+
       const data = new FeatureApi(tempReq)
         .fields()
         .filter()
@@ -563,11 +541,58 @@ router
         .limit(10)
         .keyword(["name", "nameAr", "sku", "barcode"], "OR").data;
 
+      if (homePage) {
+        const settings = await prisma.applicationSettings.findFirst({
+          select: {
+            numberOfProductsOnHomepage: true,
+            numberOfFeaturedProductsOnHomepage: true,
+            numberOfLatestOffersOnHomepage: true,
+            numberOfNewArrivalsOnHomepage: true,
+          },
+        });
+
+        // Define logic for each homepage section
+        const typeConfig = {
+          general: {
+            limit: settings.numberOfProductsOnHomepage,
+            where: {},
+            orderBy: { id: "desc" }, // default sorting
+          },
+          featured: {
+            limit: settings.numberOfFeaturedProductsOnHomepage,
+            where: { isFeatured: true },
+            orderBy: { id: "desc" },
+          },
+          offers: {
+            limit: settings.numberOfLatestOffersOnHomepage,
+            where: { offer: { not: null } },
+            orderBy: { id: "desc" },
+          },
+          new: {
+            limit: settings.numberOfNewArrivalsOnHomepage,
+            where: {},
+            orderBy: { createdAt: "desc" },
+          },
+        };
+
+        // Pick config
+        const config = typeConfig[type] || typeConfig.general;
+
+        // Apply config
+        data.take = config.limit || 3;
+        data.orderBy = config.orderBy;
+
+        // Merge homepage filters into query
+        data.where = {
+          ...data.where,
+          ...config.where,
+        };
+      }
+
       const totalProducts = await prisma.product.count({ where: data.where });
       const totalPages = Math.ceil(totalProducts / (parseInt(data.take) || 10));
 
       const products = await prisma.product.findMany(data);
-
       const formattedProducts = parseProductsImages(products);
 
       res.status(200).json({
@@ -577,12 +602,13 @@ router
       });
     } catch (error) {
       console.error(error.message);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
     }
   })
+
   .delete(authorization, async (req, res) => {
     const lang = langReq(req);
     try {
@@ -666,7 +692,7 @@ router
       });
     } catch (error) {
       console.error(error.message);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });

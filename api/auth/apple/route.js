@@ -48,16 +48,25 @@ router.post("/verify", async (req, res) => {
       clientId: process.env.AUTH_APPLE_ID,
       // nonce,
     });
+    console.log(jwtClaims);
 
-    const appleUserId = jwtClaims.sub;
+    /**
+     * @type {string}
+     */
+    const appleId = jwtClaims.sub;
+    /**
+     * @type {string?}
+     */
     const email = jwtClaims.email;
 
-    if (!email && !appleUserId) {
+    if (!appleId) {
       return res.status(400).json({ message: "Invalid Apple token" });
     }
 
     // Find or create user
-    let user = await prisma.user.findUnique({ where: { email } });
+    let user = await prisma.user.findUnique({
+      where: { ...(email ? { email } : { appleId }) },
+    });
 
     if (!user) {
       user = await prisma.user.create({
@@ -65,7 +74,7 @@ router.post("/verify", async (req, res) => {
           email,
           fullname: fullname || "Apple User",
           loginType: "APPLE",
-          // appleId: appleUserId, // optional but recommended
+          appleId, // optional but recommended
         },
       });
     }

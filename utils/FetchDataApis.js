@@ -38,33 +38,38 @@ const transformToNestedObject = (arr) => {
   return result;
 };
 
+function isDate(input) {
+  if (!isNaN(input)) {
+    return false;
+  }
+  const date = new Date(input);
+  return date instanceof Date && !isNaN(date);
+}
+
+const isStringArray = (input) => {
+  try {
+    const parsed = JSON.parse(input);
+    return Array.isArray(parsed);
+  } catch {
+    return false;
+  }
+};
 // Combined normalizeValues function with date handling
 const normalizeValues = (obj) => {
   const result = {};
   for (const key in obj) {
     const value = obj[key];
-
-    function isDate(input) {
-      if (!isNaN(input)) {
-        return false;
-      }
-      const date = new Date(input);
-      return date instanceof Date && !isNaN(date);
-    }
-
-    const isStringArray = (input) => {
-      try {
-        const parsed = JSON.parse(input);
-        return Array.isArray(parsed);
-      } catch {
-        return false;
-      }
-    };
-
     // Parse stringified arrays
-    if (typeof value === "string" && isStringArray(value)) {
-      const parsedArray = JSON.parse(value);
+    if (
+      (typeof value === "string" || typeof value === "object") &&
+      (isStringArray(value) || Array.isArray(value))
+    ) {
+      const parsedArray = Array.isArray(value) ? value : JSON.parse(value);
       result[key] = parsedArray.map((item) => {
+        if (typeof item === "object" && item !== null && !Array.isArray(item)) {
+          // ✅ Recursively normalize objects inside arrays
+          return normalizeValues(item);
+        }
         if (item === "true") return true;
         if (item === "false") return false;
         if (item === "null") return null;
@@ -99,7 +104,6 @@ class FeatureApi {
 
   filter(filterData) {
     let query = JSON.parse(JSON.stringify(this.req.query));
-
     const arrData = [
       "fields",
       "sort",
