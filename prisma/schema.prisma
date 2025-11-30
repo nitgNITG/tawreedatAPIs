@@ -158,30 +158,32 @@ model Category {
 
 // Products (Books, Stationery, etc.)
 model Product {
-  id            String   @id @default(uuid())
-  name          String
-  nameAr        String? // Arabic name
-  description   String?  @db.LongText
-  descriptionAr String?  @db.LongText
-  price         Float
-  costPrice     Float?
-  stock         Int      @default(0)
-  minStock      Int      @default(5)
-  sku           String   @unique
-  barcode       String?  @unique
-  images        String?  @db.LongText
-  weight        Float?
-  dimensions    String? // "length x width x height"
-  isActive      Boolean  @default(true)
-  isFeatured    Boolean  @default(false)
-  offer         Float?
-  categoryId    Int
-  supplierId    String?
-  brandId       Int?
-  rating        Float?   @default(0.0)
-  totalReviews  Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String    @id @default(uuid())
+  name           String
+  nameAr         String? // Arabic name
+  description    String?   @db.LongText
+  descriptionAr  String?   @db.LongText
+  price          Float
+  costPrice      Float?
+  stock          Int       @default(0)
+  minStock       Int       @default(5)
+  sku            String    @unique
+  barcode        String?   @unique
+  images         String?   @db.LongText
+  weight         Float?
+  dimensions     String? // "length x width x height"
+  isActive       Boolean   @default(true)
+  isFeatured     Boolean   @default(false)
+  offer          Float?
+  offerValidFrom DateTime?
+  offerValidTo   DateTime?
+  categoryId     Int
+  supplierId     String?
+  brandId        Int?
+  rating         Float?    @default(0.0)
+  totalReviews   Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   // Relations
   category   Category           @relation(fields: [categoryId], references: [id])
@@ -232,6 +234,7 @@ model Brand {
   isActive      Boolean @default(true)
   isDeleted     Boolean @default(false)
   isPopular     Boolean @default(false)
+  upTo          Int?
 
   // Relations
   products   Product[]

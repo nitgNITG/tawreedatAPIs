@@ -5,10 +5,11 @@ import prisma from "../../../prisma/client.js";
 import upload from "../../../middleware/upload.js";
 import uploadImage from "../../../utils/uploadImage.js";
 import deleteImage from "../../../utils/deleteImage.js";
-import { productSchema } from "../route.js";
 import FeatureApi from "../../../utils/FetchDataApis.js";
 import { parseProductImages } from "../../../utils/productImages.js";
 import pushNotification from "../../../utils/push-notification.js";
+import { productSchema } from "../../../schemas/product.schema.js";
+import { updateBrandUpTo } from "../../../utils/brandUpTo.js";
 
 const router = express.Router();
 
@@ -350,6 +351,9 @@ router
         message: getTranslation(lang, "success"),
         product: formattedProduct,
       });
+      if ((existingProduct.offer !== data.offer && data.offer) || (existingProduct.brandId !== data.brandId)) {
+        await updateBrandUpTo(data.brandId)
+      }
 
       await prisma.brandCategory.upsert({
         where: {

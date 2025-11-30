@@ -175,16 +175,6 @@ router
     const lang = langReq(req);
     try {
       const { homePage, ...query } = req.query;
-
-      if (homePage) {
-        const { numberOfCategoriesOnHomepage } =
-          await prisma.applicationSettings.findFirst({
-            select: {
-              numberOfCategoriesOnHomepage: true,
-            },
-          });
-        query.limit = numberOfCategoriesOnHomepage || 3;
-      }
       const tempReq = { ...req, query };
       const data = new FeatureApi(tempReq)
         .fields()
@@ -193,6 +183,16 @@ router
         .sort()
         .limit()
         .keyword(["name"], "OR").data;
+      if (homePage) {
+        const { numberOfCategoriesOnHomepage } =
+          await prisma.applicationSettings.findFirst({
+            select: {
+              numberOfCategoriesOnHomepage: true,
+            },
+          });
+        data.take = numberOfCategoriesOnHomepage || 3;
+        data.where.parentId = null;
+      }      
 
       const totalCount = await prisma.category.count({ where: data.where });
       const totalPages = Math.ceil(totalCount / (parseInt(data.take) || 10));
