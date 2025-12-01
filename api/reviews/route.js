@@ -1,35 +1,9 @@
 import express from "express";
-import { z } from "zod";
 import prisma from "../../prisma/client.js";
 import authorization from "../../middleware/authorization.js";
 import getTranslation, { langReq } from "../../middleware/getTranslation.js";
 import FeatureApi from "../../utils/FetchDataApis.js";
-
-export const reviewSchema = (lang, isAdmin) => {
-  const baseSchema = {
-    productId: z
-      .string({ message: getTranslation(lang, "product_required") })
-      .min(1, { message: getTranslation(lang, "product_required") }),
-    rating: z
-      .number({ message: getTranslation(lang, "rating_required") })
-      .min(1, { message: getTranslation(lang, "rating_min") })
-      .max(5, { message: getTranslation(lang, "rating_max") }),
-    comment: z
-      .string({ message: getTranslation(lang, "comment_required") })
-      .min(1, { message: getTranslation(lang, "comment_required") })
-      .optional(),
-  };
-
-  if (isAdmin) {
-    baseSchema.status = z
-      .enum(["PENDING", "APPROVED", "REJECTED"], {
-        message: getTranslation(lang, "invalid_status"),
-      })
-      .optional();
-  }
-
-  return z.object(baseSchema);
-};
+import { reviewSchema } from "../../schemas/product.reviews.js";
 
 const router = express.Router();
 
@@ -39,8 +13,9 @@ router
     const lang = langReq(req);
     try {
       const userId = req.user.id;
+      const isAdmin = req.user.role === "ADMIN";
 
-      const resultValidation = reviewSchema(lang, false).safeParse(req.body);
+      const resultValidation = reviewSchema(lang, isAdmin).safeParse(req.body);
       if (!resultValidation.success) {
         return res.status(400).json({
           message: resultValidation.error.issues[0].message,
@@ -51,12 +26,19 @@ router
         });
       }
       const data = resultValidation.data;
-      console.log(data);
-
-      const review = await prisma.review.upsert({
+      // check if review already exists
+      const existingReview = await prisma.review.findUnique({
         where: { userId_productId: { userId, productId: data.productId } },
-        update: { rating: data.rating, comment: data.comment },
-        create: { ...data, userId },
+      });
+      if (existingReview) {
+        return res
+          .status(400)
+          .json({ message: getTranslation(lang, "review_already_exists") });
+      }
+
+      const review = await prisma.review.create({
+        where: { userId_productId: { userId, productId: data.productId } },
+        data: { ...data, userId },
       });
 
       res

@@ -3,7 +3,8 @@ import prisma from "../../../prisma/client.js";
 import authorization from "../../../middleware/authorization.js";
 import getTranslation, { langReq } from "../../../middleware/getTranslation.js";
 import FeatureApi from "../../../utils/FetchDataApis.js";
-import { updateProductRatings, reviewSchema } from "../route.js";
+import { updateProductRatings } from "../route.js";
+import { reviewSchema } from "../../../schemas/product.reviews.js";
 
 const router = express.Router();
 
@@ -14,12 +15,6 @@ router
     const id = req.params.id;
     try {
       const isAdmin = req.user.role === "ADMIN";
-      if (!isAdmin) {
-        return res
-          .status(403)
-          .json({ message: getTranslation(lang, "not_allowed") });
-      }
-
       const isReviewExist = await prisma.review.findUnique({
         where: { id },
       });
@@ -29,9 +24,34 @@ router
           .json({ message: getTranslation(lang, "review_not_found") });
       }
 
-      const resultValidation = reviewSchema(lang, true)
+      // Only admin or owner can update
+      if (!isAdmin && isReviewExist.userId !== req.user.id) {
+        return res
+          .status(403)
+          .json({ message: getTranslation(lang, "not_allowed") });
+      }
+
+      const resultValidation = reviewSchema(lang, isAdmin)
         .partial()
+        .refine(
+          (data) => {
+            if (!isAdmin) {
+              // Normal users: only rating or comment
+              return data.rating !== undefined || data.comment !== undefined;
+            }
+            // Admin: rating, comment, or status
+            return (
+              data.rating !== undefined ||
+              data.comment !== undefined ||
+              data.status !== undefined
+            );
+          },
+          {
+            message: getTranslation(lang, "update_one_field"), // make sure this key exists in your translations
+          }
+        )
         .safeParse(req.body);
+
       if (!resultValidation.success) {
         return res.status(400).json({
           message: resultValidation.error.issues[0].message,
@@ -42,8 +62,7 @@ router
         });
       }
       const data = resultValidation.data;
-      console.log(data);
-      delete data.productId; // Prevent changing productId
+      delete data.productId;
 
       const review = await prisma.review.update({
         where: { id },
@@ -54,7 +73,9 @@ router
         .status(200)
         .json({ message: getTranslation(lang, "success"), review });
 
-      await updateProductRatings({ productId: review.productId });
+      if (data.rating !== undefined && data.rating !== isReviewExist.rating) {
+        await updateProductRatings({ productId: review.productId });
+      }
     } catch (error) {
       console.error(error);
       res.status(400).json({

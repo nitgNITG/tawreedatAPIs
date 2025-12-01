@@ -16,8 +16,16 @@ router.get("/", async (req, res) => {
 
     const ranges = [
       { label: "Below 10%", value: "below-10", where: { upTo: { lt: 10 } } },
-      { label: "10% - 20%", value: "10-20", where: { upTo: { gte: 10, lte: 20 } } },
-      { label: "20% - 30%", value: "20-30", where: { upTo: { gte: 20, lte: 30 } } },
+      {
+        label: "10% - 20%",
+        value: "10-20",
+        where: { upTo: { gte: 10, lte: 20 } },
+      },
+      {
+        label: "20% - 30%",
+        value: "20-30",
+        where: { upTo: { gte: 20, lte: 30 } },
+      },
       { label: "Above 30%", value: "above-30", where: { upTo: { gt: 30 } } },
     ];
 

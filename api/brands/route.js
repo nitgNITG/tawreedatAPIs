@@ -25,7 +25,7 @@ router
         .skip()
         .sort()
         .limit(10)
-        .keyword(["name", "nameAr", "sku", "barcode"], "OR").data;
+        .keyword(["name", "nameAr", "slug", "description", "descriptionAr"], "OR").data;
 
       const totalBrands = await prisma.brand.count({ where: data.where });
       const brands = await prisma.brand.findMany(data);
