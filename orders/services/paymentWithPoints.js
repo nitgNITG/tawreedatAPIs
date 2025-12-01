@@ -1,10 +1,10 @@
-import { isExpired } from "../../api/auth/confirm-user/route.js";
 import getTranslation from "../../middleware/getTranslation.js";
 import prisma from "../../prisma/client.js";
 import {
   calculateWalletPoints,
   deductWalletPoints,
 } from "../../utils/calculateWallet.js";
+import isExpired from "../../utils/isExpired.js";
 import pushNotification from "../../utils/push-notification.js";
 
 export const paymentWithPoints = async (req, res) => {

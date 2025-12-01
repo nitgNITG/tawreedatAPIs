@@ -7,8 +7,8 @@ import prisma from "../../../prisma/client.js";
 import parsePhoneNumber from "libphonenumber-js";
 import DeviceDetector from "node-device-detector";
 import DeviceHelper from "node-device-detector/helper.js";
-import { isExpired } from "../confirm-user/route.js";
 import { isValidPhone } from "../../../utils/countryCode.js";
+import isExpired from "../../../utils/isExpired.js";
 
 const router = express.Router();
 

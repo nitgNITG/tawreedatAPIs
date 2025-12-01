@@ -1,6 +1,6 @@
-import { isExpired } from "../../api/auth/confirm-user/route.js";
 import getTranslation from "../../middleware/getTranslation.js";
 import prisma from "../../prisma/client.js";
+import isExpired from "../../utils/isExpired.js";
 import { generateHash } from "../../utils/urway.js";
 
 const UrwayPayment = async (req, res, next) => {

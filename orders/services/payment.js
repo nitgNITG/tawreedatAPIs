@@ -1,7 +1,7 @@
-import { isExpired } from "../../api/auth/confirm-user/route.js";
 import getTranslation from "../../middleware/getTranslation.js";
 import prisma from "../../prisma/client.js";
 import { getUserClass } from "../../utils/extractUserClass.js";
+import isExpired from "../../utils/isExpired.js";
 import pushNotification from "../../utils/push-notification.js";
 
 export const payment = async (req, res) => {

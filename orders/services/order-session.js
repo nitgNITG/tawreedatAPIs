@@ -1,6 +1,6 @@
-import { isExpired } from "../../api/auth/confirm-user/route.js";
 import getTranslation from "../../middleware/getTranslation.js";
 import prisma from "../../prisma/client.js";
+import isExpired from "../../utils/isExpired.js";
 
 export const orderSession = async (req, res) => {
     const id = +req.params.id;

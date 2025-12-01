@@ -3,7 +3,7 @@ import { z } from "zod";
 import prisma from "../../../prisma/client.js";
 import authorization from "../../../middleware/authorization.js";
 import getTranslation, { langReq } from "../../../middleware/getTranslation.js";
-import { isExpired } from "../../auth/confirm-user/route.js";
+import isExpired from "../../../utils/isExpired.js";
 
 export const userSchema = (lang) => {
   return z.object({

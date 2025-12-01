@@ -5,6 +5,7 @@ import getTranslation, { langReq } from "../../../middleware/getTranslation.js";
 import FeatureApi from "../../../utils/FetchDataApis.js";
 import { updateProductRatings } from "../route.js";
 import { reviewSchema } from "../../../schemas/product.reviews.js";
+import isExpired from "../../../utils/isExpired.js";
 
 const router = express.Router();
 
@@ -29,6 +30,16 @@ router
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });
+      }
+
+      const reviewCreatedAt = isReviewExist.createdAt;
+      const UPDATE_WINDOW_MINUTES = 15 * 24 * 60; // 15 days in minutes
+
+      // Check if the review is expired for a normal user trying to update
+      if (!isAdmin && isExpired(reviewCreatedAt, UPDATE_WINDOW_MINUTES)) {
+        return res
+          .status(403)
+          .json({ message: getTranslation(lang, "review_update_expired") });
       }
 
       const resultValidation = reviewSchema(lang, isAdmin)
@@ -63,6 +74,15 @@ router
       }
       const data = resultValidation.data;
       delete data.productId;
+
+      const contentChanged =
+        (data.rating !== undefined && data.rating !== isReviewExist.rating) ||
+        (data.comment !== undefined && data.comment !== isReviewExist.comment);
+
+      if (isReviewExist.status === "APPROVED" && contentChanged && !isAdmin) {
+        // Force status back to PENDING for moderation
+        data.status = "PENDING";
+      }
 
       const review = await prisma.review.update({
         where: { id },

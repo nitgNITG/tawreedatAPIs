@@ -3,13 +3,9 @@ import prisma from "../../../prisma/client.js";
 import authorization from "../../../middleware/authorization.js";
 import getTranslation, { langReq } from "../../../middleware/getTranslation.js";
 import { z } from "zod";
+import isExpired from "../../../utils/isExpired.js";
 
-export function isExpired(time, timeByMinutes = 2) {
-  const currentTime = new Date();
-  const createdTime = new Date(time);
-  const minutesInMilliseconds = timeByMinutes * 60 * 1000;
-  return currentTime - createdTime >= minutesInMilliseconds;
-}
+
 const confirmUserSchema = (lang) => {
   return z.object({
     code: z.string({

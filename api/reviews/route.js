@@ -37,7 +37,6 @@ router
       }
 
       const review = await prisma.review.create({
-        where: { userId_productId: { userId, productId: data.productId } },
         data: { ...data, userId },
       });
 
