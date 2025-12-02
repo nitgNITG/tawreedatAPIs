@@ -144,6 +144,21 @@ router
           ...(query ?? {}),
         });
         res.status(200).json({ message: "category_created", category });
+        try {
+          await fetch(`${process.env.FRONTEND_URL}/api/revalidate`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              tag: "categories",
+              key: process.env.REVALIDATE_API_KEY,
+            }),
+          });
+          console.log("Cache revalidated successfully");
+        } catch (revalidateError) {
+          console.error("Failed to revalidate cache:", revalidateError);
+        }
         // await pushNotification({
         //   key: {
         //     title: "notification_category_created_title",
@@ -192,7 +207,7 @@ router
           });
         data.take = numberOfCategoriesOnHomepage || 3;
         data.where.parentId = null;
-      }      
+      }
 
       const totalCount = await prisma.category.count({ where: data.where });
       const totalPages = Math.ceil(totalCount / (parseInt(data.take) || 10));

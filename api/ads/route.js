@@ -6,6 +6,7 @@ import { z } from "zod";
 import authorization from "../../middleware/authorization.js";
 import upload from "../../middleware/upload.js";
 import uploadImage from "../../utils/uploadImage.js";
+import { url } from "inspector";
 
 const router = express.Router();
 
@@ -30,9 +31,24 @@ export const adsSchema = (lang) => {
       message: getTranslation(lang, "ads_descriptionAr_is_required"),
     }),
 
-    targetUrl: z.url({
-      message: getTranslation(lang, "ads_target_url_is_required"),
-    }),
+    targetUrl: z
+      .string()
+      .trim()
+      .transform((url) => (url === "" ? null : url))
+      .refine(
+        (url) => url === null || z.string().url().safeParse(url).success,
+        {
+          message: getTranslation(lang, "invalid_url"),
+        }
+      )
+      .optional(),
+
+    mobileScreen: z
+      .string()
+      .transform((mobileScreen) =>
+        mobileScreen.trim() === "" ? null : mobileScreen
+      )
+      .optional(),
     startDate: z
       .union([z.string(), z.date()], {
         message: getTranslation(lang, "invalid_date"),
@@ -122,7 +138,7 @@ router
       });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
@@ -147,7 +163,7 @@ router
       res.status(200).json({ ads, totalCount, totalPages });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });

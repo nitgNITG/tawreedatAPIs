@@ -29,7 +29,7 @@ router
       res.status(200).json({ ad });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
@@ -59,7 +59,6 @@ router
           }
         })
         .safeParse(req.body);
-
       if (!resultValidation.success) {
         return res.status(400).json({
           message: resultValidation.error.issues[0].message,
@@ -70,7 +69,7 @@ router
         });
       }
 
-      const data = resultValidation.data;
+      const data = resultValidation.data;      
       const ad = await prisma.ad.findUnique({
         where: { id },
       });
@@ -92,14 +91,12 @@ router
         ...(query ?? {}),
       });
 
-      console.log(updatedAd);
-
       res
         .status(200)
         .json({ message: getTranslation(lang, "ad_updated"), ad: updatedAd });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
@@ -134,7 +131,7 @@ router
       res.status(200).json({ message: getTranslation(lang, "ad_deleted") });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });

@@ -91,6 +91,21 @@ router
           message: getTranslation(lang, "category_updated"),
           category,
         });
+        try {
+          await fetch(`${process.env.FRONTEND_URL}/api/revalidate`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              tag: "categories",
+              key: process.env.REVALIDATE_API_KEY,
+            }),
+          });
+          console.log("Cache revalidated successfully");
+        } catch (revalidateError) {
+          console.error("Failed to revalidate cache:", revalidateError);
+        }
 
         await pushNotification({
           key: {
@@ -143,6 +158,21 @@ router
       res
         .status(200)
         .json({ message: getTranslation(lang, "success_delete_category") });
+      try {
+        await fetch(`${process.env.FRONTEND_URL}/api/revalidate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            tag: "categories",
+            key: process.env.REVALIDATE_API_KEY,
+          }),
+        });
+        console.log("Cache revalidated successfully");
+      } catch (revalidateError) {
+        console.error("Failed to revalidate cache:", revalidateError);
+      }
     } catch (error) {
       console.error(error);
       res.status(400).json({

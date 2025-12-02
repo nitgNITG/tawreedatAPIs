@@ -87,10 +87,20 @@ router
         existingProduct.id
       )
         .partial()
+        .superRefine((data, ctx) => {
+          if (
+            data.offer &&
+            ((!data.offerValidFrom && !existingProduct.offerValidFrom) ||
+              (!data.offerValidTo && existingProduct.offerValidTo))
+          ) {
+            ctx.addIssue({
+              code: "custom",
+              message: getTranslation(lang, "offer_requires_valid_dates"),
+            });
+          }
+        })
         .safeParse(req.body);
       if (!resultValidation.success) {
-        console.log("hi");
-
         return res.status(400).json({
           message: resultValidation.error.issues[0].message,
           errors: resultValidation.error.issues.map((issue) => ({
@@ -351,8 +361,28 @@ router
         message: getTranslation(lang, "success"),
         product: formattedProduct,
       });
-      if ((existingProduct.offer !== data.offer && data.offer) || (existingProduct.brandId !== data.brandId)) {
-        await updateBrandUpTo(data.brandId)
+
+      try {
+        await fetch(`${process.env.FRONTEND_URL}/api/revalidate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            tag: "products",
+            key: process.env.REVALIDATE_API_KEY,
+          }),
+        });
+        console.log("Cache revalidated successfully");
+      } catch (revalidateError) {
+        console.error("Failed to revalidate cache:", revalidateError);
+      }
+
+      if (
+        (existingProduct.offer !== data.offer && data.offer) ||
+        existingProduct.brandId !== data.brandId
+      ) {
+        await updateBrandUpTo(data.brandId);
       }
 
       await prisma.brandCategory.upsert({
@@ -440,6 +470,21 @@ router
       res.status(200).json({
         message: getTranslation(lang, "product_deleted"),
       });
+      try {
+        await fetch(`${process.env.FRONTEND_URL}/api/revalidate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            tag: "products",
+            key: process.env.REVALIDATE_API_KEY,
+          }),
+        });
+        console.log("Cache revalidated successfully");
+      } catch (revalidateError) {
+        console.error("Failed to revalidate cache:", revalidateError);
+      }
     } catch (error) {
       console.error(error);
       res.status(400).json({

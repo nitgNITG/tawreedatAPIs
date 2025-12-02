@@ -194,6 +194,21 @@ router
         message: getTranslation(lang, "product_created_successfully"),
         product: formattedProduct,
       });
+      try {
+        await fetch(`${process.env.FRONTEND_URL}/api/revalidate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            tag: "products",
+            key: process.env.REVALIDATE_API_KEY,
+          }),
+        });
+        console.log("Cache revalidated successfully");
+      } catch (revalidateError) {
+        console.error("Failed to revalidate cache:", revalidateError);
+      }
 
       await updateBrandUpTo(data.brandId);
 
@@ -397,9 +412,24 @@ router
           ? deletionStrategies[strategy].message()
           : deletionStrategies[strategy].message;
 
-      return res.status(200).json({
+       res.status(200).json({
         message: getTranslation(lang, messageKey),
       });
+              try {
+          await fetch(`${process.env.FRONTEND_URL}/api/revalidate`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              tag: "products",
+              key: process.env.REVALIDATE_API_KEY,
+            }),
+          });
+          console.log("Cache revalidated successfully");
+        } catch (revalidateError) {
+          console.error("Failed to revalidate cache:", revalidateError);
+        }
     } catch (error) {
       console.error(error.message);
       res.status(500).json({

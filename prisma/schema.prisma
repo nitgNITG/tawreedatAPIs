@@ -143,6 +143,7 @@ model Category {
   parentId          Int?
   isActive          Boolean  @default(true)
   productAttributes Json?
+  sortId            Int      @default(0)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -152,6 +153,7 @@ model Category {
   products Product[]
   brands   BrandCategory[]
 
+  @@index([sortId])
   @@fulltext([name, nameAr, description, descriptionAr])
   @@map("categories")
 }
@@ -171,7 +173,7 @@ model Product {
   barcode        String?   @unique
   images         String?   @db.LongText
   weight         Float?
-  dimensions     String? // "length x width x height"
+  dimensions     String?
   isActive       Boolean   @default(true)
   isFeatured     Boolean   @default(false)
   offer          Float?
@@ -389,11 +391,12 @@ model WishlistItem {
 model Ad {
   id              Int           @id @default(autoincrement())
   title           String
-  titleAr         String? // Arabic title
-  description     String?
-  descriptionAr   String? // Arabic description
+  titleAr         String?
+  description     String?       @db.LongText
+  descriptionAr   String?       @db.LongText
   imageUrl        String
-  targetUrl       String
+  targetUrl       String?
+  mobileScreen    String?       @db.LongText
   startDate       DateTime
   endDate         DateTime
   budget          Float         @default(0)
@@ -488,6 +491,10 @@ model ApplicationSettings {
   updatedAt                          DateTime @updatedAt
   loginAsGuest                       Boolean  @default(false)
   permanentDelete                    Boolean  @default(false)
+  app_android_version                String?
+  app_android_url                    String?
+  app_ios_version                    String?
+  app_ios_url                        String?
 }
 
 model OnBoarding {

@@ -38,17 +38,55 @@ router
     const lang = langReq(req);
     try {
       const userId = req.user.id;
-      const data = new FeatureApi(req).fields().filter({ userId }).sort().data;
+      const data = new FeatureApi(req)
+        .fields(
+          "id,quantity,createdAt,product=id-name-price-images-offer-offerValidFrom-offerValidTo"
+        )
+        .filter({ userId })
+        .sort().data;
 
       const cartItems = await prisma.cartItem.findMany(data);
 
       let formattedCartItems = cartItems;
-      if (formattedCartItems[0]?.product) {
-        formattedCartItems = formattedCartItems.map((item) => ({
-          ...item,
-          product: parseProductImages(item.product),
-        }));
+      if (data.select?.product) {
+        // 1. Process images AND determine the final price for each item
+        formattedCartItems = formattedCartItems.map((item) => {
+          const productWithImages = parseProductImages(item.product);
+
+          let currentPrice = productWithImages.price; // Default to base price
+
+          // Check if offer exists and dates are valid
+          if (
+            productWithImages.offer &&
+            productWithImages.offerValidFrom &&
+            productWithImages.offerValidTo
+          ) {
+            const now = new Date();
+            const validFrom = new Date(productWithImages.offerValidFrom);
+            const validTo = new Date(productWithImages.offerValidTo);
+
+            // Check if the current date is within the valid range
+            if (now >= validFrom && now <= validTo) {
+              // Offer is valid, calculate the discounted price
+              const discountAmount =
+                (productWithImages.price * productWithImages.offer) / 100;
+              currentPrice = productWithImages.price - discountAmount;
+              // Ensure price is positive
+              if (currentPrice < 0) currentPrice = 0;
+            }
+          }
+
+          // Return the item with the final calculated price added as a new property
+          // The original price remains available inside item.product.price
+          return {
+            ...item,
+            finalPrice: currentPrice,
+            product: productWithImages,
+            // Add a specific field to the cart item response for the price used in total calculations
+          };
+        });
       }
+
       // Calculate cart totals
       let cartSummary = {
         totalItems: formattedCartItems.reduce(
@@ -56,13 +94,14 @@ router
           0
         ),
         itemCount: formattedCartItems.length,
+        totalPrice: 0, // Initialize total price
       };
-      if (
-        formattedCartItems.length > 0 &&
-        formattedCartItems[0]?.product?.price
-      ) {
+
+      if (formattedCartItems.length > 0) {
+        // 2. Use the new 'finalPrice' field for accurate total calculation
         cartSummary.totalPrice = formattedCartItems.reduce(
-          (sum, item) => sum + item.product.price * item.quantity,
+          (sum, item) =>
+            sum + (item.finalPrice ?? item?.product.price) * item.quantity,
           0
         );
       }
@@ -74,7 +113,7 @@ router
       });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
@@ -169,7 +208,7 @@ router
       }
 
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
@@ -307,7 +346,7 @@ router
       }
 
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
@@ -327,7 +366,7 @@ router
       });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
