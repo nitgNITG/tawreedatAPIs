@@ -176,6 +176,7 @@ model Product {
   dimensions     String?
   isActive       Boolean   @default(true)
   isFeatured     Boolean   @default(false)
+  isBestSeller   Boolean   @default(false)
   offer          Float?
   offerValidFrom DateTime?
   offerValidTo   DateTime?
@@ -184,6 +185,7 @@ model Product {
   brandId        Int?
   rating         Float?    @default(0.0)
   totalReviews   Int       @default(0)
+  sortId         Int       @default(0)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -237,6 +239,7 @@ model Brand {
   isDeleted     Boolean @default(false)
   isPopular     Boolean @default(false)
   upTo          Int?
+  sortId        Int     @default(0)
 
   // Relations
   products   Product[]

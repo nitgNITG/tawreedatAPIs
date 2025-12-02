@@ -57,7 +57,10 @@ const applicationSettingsSchema = (lang) => {
       .default(3),
     numberOfBrandsOnHomepage: z
       .number({
-        required_error: getTranslation(lang, "numberOfBrandsOnHomepageRequired"),
+        required_error: getTranslation(
+          lang,
+          "numberOfBrandsOnHomepageRequired"
+        ),
         invalid_type_error: getTranslation(lang, "invalidNumber"),
       })
       .min(1)
@@ -91,6 +94,10 @@ const applicationSettingsSchema = (lang) => {
 
     loginAsGuest: z.boolean().default(false),
     permanentDelete: z.boolean().default(false),
+    app_android_version: z.string(),
+    app_android_url: z.string(),
+    app_ios_version: z.string(),
+    app_ios_url: z.string(),
   });
 };
 
@@ -115,7 +122,6 @@ router
       return res
         .status(200)
         .json({ settings, message: getTranslation(lang, "success") });
-        
     } catch (error) {
       console.error("Error fetching app settings:", error);
       return res.status(500).json({
