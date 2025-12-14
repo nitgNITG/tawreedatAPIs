@@ -77,7 +77,7 @@ export const processPaymobPayment = async ({
       },
       special_reference: order.orderNumber,
       expiration: 3600,
-      notification_url: redirectUrl +"2",
+      notification_url: redirectUrl + "2",
       redirection_url: "http://127.0.0.1:3100/api/orders/paymob2",
     };
 
@@ -318,7 +318,6 @@ export async function payment(amount) {
     throw error;
   }
 }
-
 
 export async function getPaymobOrder(merchant_order_id) {
   try {

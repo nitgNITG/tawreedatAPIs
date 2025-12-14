@@ -7,6 +7,7 @@ import upload from "../../../middleware/upload.js";
 import uploadImage from "../../../utils/uploadImage.js";
 import deleteImage from "../../../utils/deleteImage.js";
 import { updateBrandSchema } from "../../../schemas/brand.schema.js";
+import revalidateDashboard from "../../../utils/revalidateDashboard.js";
 
 const router = Router();
 
@@ -171,6 +172,7 @@ router
           message: getTranslation(lang, "brand_updated"),
           brand: updatedBrand,
         });
+        await revalidateDashboard("brands");
       } catch (error) {
         console.error(error);
         res.status(500).json({
@@ -218,7 +220,7 @@ router
         await deleteImage(brand.coverUrl);
         await deleteImage(brand.logoUrl);
 
-        return res.status(200).json({
+        res.status(200).json({
           message: getTranslation(lang, "brand_deleted_permanently"),
         });
       } else {
@@ -231,10 +233,11 @@ router
           },
         });
 
-        return res.status(200).json({
+        res.status(200).json({
           message: getTranslation(lang, "brand_archived"),
         });
       }
+      await revalidateDashboard("brands");
     } catch (error) {
       console.error(error);
       res.status(500).json({

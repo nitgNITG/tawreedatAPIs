@@ -8,6 +8,7 @@ import { categorySchema } from "../route.js";
 import uploadImage from "../../../utils/uploadImage.js";
 import deleteImage from "../../../utils/deleteImage.js";
 import pushNotification from "../../../utils/push-notification.js";
+import revalidateDashboard from "../../../utils/revalidateDashboard.js";
 
 const router = express.Router();
 
@@ -31,7 +32,7 @@ router
         .json({ message: getTranslation(lang, "category_fetched"), category });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
@@ -91,22 +92,7 @@ router
           message: getTranslation(lang, "category_updated"),
           category,
         });
-        try {
-          await fetch(`${process.env.FRONTEND_URL}/api/revalidate`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              tag: "categories",
-              key: process.env.REVALIDATE_API_KEY,
-            }),
-          });
-          console.log("Cache revalidated successfully");
-        } catch (revalidateError) {
-          console.error("Failed to revalidate cache:", revalidateError);
-        }
-
+        await revalidateDashboard("categories");
         await pushNotification({
           key: {
             title: "notification_category_updated_title",
@@ -126,7 +112,7 @@ router
         });
       } catch (error) {
         console.error(error);
-        res.status(400).json({
+        res.status(500).json({
           message: getTranslation(lang, "internalError"),
           error: error.message,
         });
@@ -158,24 +144,10 @@ router
       res
         .status(200)
         .json({ message: getTranslation(lang, "success_delete_category") });
-      try {
-        await fetch(`${process.env.FRONTEND_URL}/api/revalidate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            tag: "categories",
-            key: process.env.REVALIDATE_API_KEY,
-          }),
-        });
-        console.log("Cache revalidated successfully");
-      } catch (revalidateError) {
-        console.error("Failed to revalidate cache:", revalidateError);
-      }
+      await revalidateDashboard("categories");
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });

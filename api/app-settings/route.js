@@ -98,6 +98,11 @@ const applicationSettingsSchema = (lang) => {
     app_android_url: z.string(),
     app_ios_version: z.string(),
     app_ios_url: z.string(),
+    paymob_api_key: z.string().optional(),
+    paymob_secret_key: z.string().optional(),
+    paymob_public_key: z.string().optional(),
+    paymob_base_url: z.url().optional(),
+    paymob_payment_methods: z.string().optional(),
   });
 };
 
@@ -144,7 +149,16 @@ router
       );
 
       if (!resultValidation.success) {
-        return res.status(400).json({
+        if (process.env.NODE_ENV === "development") {
+          console.log(
+            resultValidation.error.issues.map((issue) => ({
+              path: issue.path,
+              message: issue.message,
+            }))
+          );
+        }
+
+        return res.status(409).json({
           message: resultValidation.error.issues[0].message,
           errors: resultValidation.error.issues.map((issue) => ({
             path: issue.path,

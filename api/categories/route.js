@@ -7,6 +7,7 @@ import authorization from "../../middleware/authorization.js";
 import getTranslation, { langReq } from "../../middleware/getTranslation.js";
 import FeatureApi from "../../utils/FetchDataApis.js";
 import pushNotification from "../../utils/push-notification.js";
+import revalidateDashboard from "../../utils/revalidateDashboard.js";
 
 const router = express.Router();
 const attributeValueSchema = z.object({
@@ -144,21 +145,7 @@ router
           ...(query ?? {}),
         });
         res.status(200).json({ message: "category_created", category });
-        try {
-          await fetch(`${process.env.FRONTEND_URL}/api/revalidate`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              tag: "categories",
-              key: process.env.REVALIDATE_API_KEY,
-            }),
-          });
-          console.log("Cache revalidated successfully");
-        } catch (revalidateError) {
-          console.error("Failed to revalidate cache:", revalidateError);
-        }
+        await revalidateDashboard("categories");
         // await pushNotification({
         //   key: {
         //     title: "notification_category_created_title",

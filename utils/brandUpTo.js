@@ -1,4 +1,5 @@
 import prisma from "../prisma/client.js";
+import revalidateDashboard from "./revalidateDashboard.js";
 
 export const updateBrandUpTo = async (brandId) => {
   if (!brandId) return;
@@ -32,6 +33,7 @@ export const updateBrandUpTo = async (brandId) => {
         where: { id: brandId },
         data: { upTo: newOffer },
       });
+      await revalidateDashboard("brands");
 
       console.log(
         `Brand ${brandId}: Updated upTo from ${brand.upTo}% → ${newOffer}%`

@@ -10,6 +10,7 @@ import {
   deleteBrandsSchema,
 } from "../../schemas/brand.schema.js";
 import deleteImage from "../../utils/deleteImage.js";
+import revalidateDashboard from "../../utils/revalidateDashboard.js";
 
 const router = Router();
 
@@ -25,7 +26,10 @@ router
         .skip()
         .sort()
         .limit(10)
-        .keyword(["name", "nameAr", "slug", "description", "descriptionAr"], "OR").data;
+        .keyword(
+          ["name", "nameAr", "slug", "description", "descriptionAr"],
+          "OR"
+        ).data;
 
       const totalBrands = await prisma.brand.count({ where: data.where });
       const brands = await prisma.brand.findMany(data);
@@ -97,6 +101,7 @@ router
           message: getTranslation(lang, "created_successfully"),
           brand,
         });
+        await revalidateDashboard("brands");
       } catch (error) {
         console.error(error);
         res.status(500).json({
@@ -158,10 +163,11 @@ router
         const count = await prisma.brand.deleteMany({
           where: { isActive: false },
         });
-        return res.status(200).json({
+        res.status(200).json({
           message: getTranslation(lang, "deleted_successfully"),
           count,
         });
+        return await revalidateDashboard("brands");
       }
       if (data.ids && data.permanent) {
         const brands = await prisma.brand.findMany({
@@ -175,19 +181,21 @@ router
         const count = await prisma.brand.deleteMany({
           where: { id: { in: data.ids } },
         });
-        return res.status(200).json({
+        res.status(200).json({
           message: getTranslation(lang, "deleted_successfully"),
           count,
         });
+        return await revalidateDashboard("brands");
       }
       const count = await prisma.brand.updateMany({
         where: { id: { in: data.ids } },
         data: { isDeleted: true, isActive: false },
       });
-      return res.status(200).json({
+      res.status(200).json({
         message: getTranslation(lang, "deleted_successfully"),
         count,
       });
+      return await revalidateDashboard("brands");
     } catch (error) {
       res.status(500).send(error.message);
     }

@@ -10,6 +10,7 @@ import { parseProductImages } from "../../../utils/productImages.js";
 import pushNotification from "../../../utils/push-notification.js";
 import { productSchema } from "../../../schemas/product.schema.js";
 import { updateBrandUpTo } from "../../../utils/brandUpTo.js";
+import revalidateDashboard from "../../../utils/revalidateDashboard.js";
 
 const router = express.Router();
 
@@ -37,7 +38,7 @@ router
       });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
@@ -361,23 +362,7 @@ router
         message: getTranslation(lang, "success"),
         product: formattedProduct,
       });
-
-      try {
-        await fetch(`${process.env.FRONTEND_URL}/api/revalidate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            tag: "products",
-            key: process.env.REVALIDATE_API_KEY,
-          }),
-        });
-        console.log("Cache revalidated successfully");
-      } catch (revalidateError) {
-        console.error("Failed to revalidate cache:", revalidateError);
-      }
-
+      await revalidateDashboard("products");
       if (
         (existingProduct.offer !== data.offer && data.offer) ||
         existingProduct.brandId !== data.brandId
@@ -417,7 +402,7 @@ router
       // });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
@@ -470,24 +455,10 @@ router
       res.status(200).json({
         message: getTranslation(lang, "product_deleted"),
       });
-      try {
-        await fetch(`${process.env.FRONTEND_URL}/api/revalidate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            tag: "products",
-            key: process.env.REVALIDATE_API_KEY,
-          }),
-        });
-        console.log("Cache revalidated successfully");
-      } catch (revalidateError) {
-        console.error("Failed to revalidate cache:", revalidateError);
-      }
+      await revalidateDashboard("products");
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });

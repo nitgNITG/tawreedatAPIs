@@ -498,6 +498,11 @@ model ApplicationSettings {
   app_android_url                    String?
   app_ios_version                    String?
   app_ios_url                        String?
+  paymob_api_key                     String?
+  paymob_secret_key                  String?
+  paymob_public_key                  String?
+  paymob_base_url                    String?
+  paymob_payment_methods             String?
 }
 
 model OnBoarding {
