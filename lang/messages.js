@@ -1,5 +1,11 @@
 const lang = {
   en: {
+    notification_payment_success_title_user: "Payment successful",
+    notification_payment_success_desc_user: (amount, orderNumber) =>
+      `Your payment of ${amount} EGP for order #${orderNumber} was successful.`,
+    notification_payment_success_title_admin: "Order paid",
+    notification_payment_success_desc_admin: (orderNumber, amount) =>
+      `Order #${orderNumber} was paid successfully. Amount: ${amount} EGP`,
     notification_category_created_title: "New Category Created",
     notification_category_created_desc: (fullname, categoryName) =>
       `${fullname} has created a new category: ${categoryName}.`,
@@ -184,15 +190,6 @@ Try again in ${duration} minutes or reset your password.`;
       `${username} bought in ${points} points from ${brandName}.`,
     notification_payment_success_desc_points: (username, points, brandName) =>
       `${username} bought in ${points} points from ${brandName}.`,
-    notification_payment_success_title_user: (brandName) =>
-      `Thank you for your purchase through Mostasmer at ${brandName}!`,
-    notification_payment_success_desc_user: (
-      amount,
-      points,
-      brandName,
-      validFrom
-    ) =>
-      `Your purchase of ${amount} at ${brandName} has earned you ${points} reward points. Keep shopping to earn more! Valid from: ${validFrom}`,
     notification_payment_success_title_points_user: (brandName) =>
       `Points Redemption Successful at ${brandName}!`,
     notification_payment_success_desc_points_user: (points, brandName) =>
@@ -323,6 +320,13 @@ Try again in ${duration} minutes or reset your password.`;
     wishlist_cleared: "Wishlist cleared successfully",
   },
   ar: {
+    notification_payment_success_title_user: "تم الدفع بنجاح",
+    notification_payment_success_desc_user: (amount, orderNumber) =>
+      `تم استلام دفعة بقيمة ${amount} جنيه للطلب رقم ${orderNumber}.`,
+    notification_payment_success_title_admin: "تم دفع الطلب",
+    notification_payment_success_desc_admin: (orderNumber, amount) =>
+      `تم دفع الطلب رقم ${orderNumber} بنجاح. المبلغ: ${amount} جنيه`,
+
     notification_category_created_title: "تم إنشاء فئة جديدة",
     notification_category_created_desc: (fullname, categoryName) =>
       `${fullname} قام بإنشاء فئة جديدة: ${categoryName}.`,
@@ -384,15 +388,7 @@ Try again in ${duration} minutes or reset your password.`;
       `${username} اشترى بمبلغ ${points} نقطة من ${brandName}.`,
     notification_payment_success_desc_points: (username, points, brandName) =>
       `${username} اشترى بمبلغ ${points} نقطة من ${brandName}.`,
-    notification_payment_success_title_user: (brandName) =>
-      `شكراً لشرائك عبر مستثمر في ${brandName}!`,
-    notification_payment_success_desc_user: (
-      amount,
-      points,
-      brandName,
-      validFrom
-    ) =>
-      `حصلت على ${points} نقطة مكافأة من مشترياتك بقيمة ${amount} في ${brandName}. واصل التسوق لكسب المزيد! سارية من: ${validFrom}`,
+
     notification_payment_success_title_points_user: (brandName) =>
       `تم استبدال النقاط بنجاح في ${brandName}!`,
     notification_payment_success_desc_points_user: (points, brandName) =>

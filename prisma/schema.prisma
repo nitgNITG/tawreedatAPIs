@@ -298,15 +298,15 @@ model Order {
   paymentMethod   PaymentMethod @default(CASH_ON_DELIVERY)
   paymentStatus   PaymentStatus @default(PENDING)
   paymentId       String?       @unique
-  paymentDetails  String?       @db.Text // JSON string with payment details
   shippingAddress String?
   notes           String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
   // Relations
-  customer User        @relation(fields: [customerId], references: [id])
-  items    OrderItem[]
+  customer        User             @relation(fields: [customerId], references: [id])
+  items           OrderItem[]
+  paymentAttempts PaymentAttempt[]
 
   @@map("orders")
 }
@@ -316,6 +316,21 @@ enum PaymentMethod {
   PAYPAL
   BANK_TRANSFER
   CASH_ON_DELIVERY
+}
+
+model PaymentAttempt {
+  id          Int           @id @default(autoincrement())
+  orderId     Int
+  provider    String // PAYMOB
+  intentionId String?
+  status      PaymentStatus @default(PENDING)
+  rawResponse Json?
+  createdAt   DateTime      @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([intentionId])
 }
 
 // Order Items
@@ -490,6 +505,7 @@ model ApplicationSettings {
   lastAttempt                        DateTime @default(now())
   loginAttemptDurationMinutes        Int?     @default(20) @db.SmallInt
   loginAttempts                      Int?     @default(5) @db.SmallInt
+  paymentAttempts                    Int?     @default(5) @db.SmallInt
   createdAt                          DateTime @default(now())
   updatedAt                          DateTime @updatedAt
   loginAsGuest                       Boolean  @default(false)
@@ -498,11 +514,12 @@ model ApplicationSettings {
   app_android_url                    String?
   app_ios_version                    String?
   app_ios_url                        String?
-  paymob_api_key                     String? @db.LongText
+  paymob_api_key                     String?  @db.LongText
   paymob_secret_key                  String?
   paymob_public_key                  String?
   paymob_base_url                    String?
   paymob_payment_methods             String?
+  paymob_Iframes                     String?
 }
 
 model OnBoarding {

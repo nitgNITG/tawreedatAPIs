@@ -73,12 +73,13 @@ router.get("/:id", authorization, async (req, res) => {
   const id = req.params.id;
   const user = req.user;
   try {
-    const data = new FeatureApi(req)
-      .filter({
-        OR: [{ id: isNaN(+id) ? undefined : +id }, { orderNumber: id }],
-      })
-      .fields().data;
-    const order = await prisma.order.findFirst(data);
+    const data = new FeatureApi(req).fields().data;
+    const order = await prisma.order.findFirst({
+      where: {
+        OR: [{ id: Number.isNaN(+id) ? undefined : +id }, { orderNumber: id }],
+      },
+      ...data,
+    });
     if (!order)
       return res
         .status(404)
@@ -110,7 +111,7 @@ router.put("/:id", authorization, async (req, res) => {
     const query = new FeatureApi(req).fields().data;
     const order = await prisma.order.findFirst({
       where: {
-        OR: [{ id: isNaN(+id) ? undefined : +id }, { orderNumber: id }],
+        OR: [{ id: Number.isNaN(+id) ? undefined : +id }, { orderNumber: id }],
       },
       include: { items: true },
     });
@@ -265,7 +266,7 @@ router.delete("/:id", authorization, async (req, res) => {
   try {
     const order = await prisma.order.findUnique({
       where: {
-        OR: [{ id: isNaN(+id) ? undefined : +id }, { orderNumber: id }],
+        OR: [{ id: Number.isNaN(+id) ? undefined : +id }, { orderNumber: id }],
       },
     });
     if (!order)

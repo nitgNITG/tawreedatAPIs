@@ -1,4 +1,3 @@
-import { de, fi } from "zod/v4/locales";
 import getTranslation from "../../middleware/getTranslation.js";
 import prisma from "../../prisma/client.js";
 
@@ -15,40 +14,54 @@ import prisma from "../../prisma/client.js";
  *   price: number,
  *   product: { name: string }
  * }>} options.order.items
- * @param {Object} options.user - User data for billing information
- * @param {string} options.user.fullname
- * @param {string} options.user.email
- * @param {string} options.user.phone
- * @param {Object} options.user.address
- * @param {string} options.user.address.apartment
- * @param {string} options.user.address.street
- * @param {string} options.user.address.building
- * @param {string} options.user.address.city
- * @param {string} options.user.address.floor
- * @param {string} options.user.address.state
+ * @param {import("@prisma/client").User } options.user
  * @param {string} options.lang - Language for translations
  * @param {string?} options.redirectUrl - URL to redirect after payment
- * @returns {Promise<Object>} - Payment processing result with payment links
+ * @param {{
+ * paymentMethods: string;
+ * baseUrl: string;
+ * secretKey: string;
+ * publicKey: string;
+ * iframes: string;
+ * }} options.paymob - paymob env variables
+ * @returns {Promise<{
+ * success: true;
+ * paymentLink: string;
+ * message: string;
+ * } | {
+ * success: false;
+ * message: string;
+ * error: string;
+ * }>} - Payment processing result with payment links
  */
 export const processPaymobPayment = async ({
   order,
   user,
   lang = "en",
   redirectUrl,
+  paymob,
 }) => {
   try {
     if (!order || !order.totalAmount || !order.items) {
       throw new Error("Invalid order data");
     }
 
+    const paymentMethods = parseNumberArray(paymob.paymentMethods);
+
+    const iframeIds = parseStringArray(paymob.iframes);
+
+    if (!paymentMethods.length) {
+      throw new Error("No Paymob payment methods configured");
+    }
+
     // Create payment data for Paymob
     const paymentData = {
-      amount: parseFloat(order.totalAmount * 100), // Convert to cents
+      amount: Number.parseFloat(order.totalAmount * 100), // Convert to cents
       currency: "EGP",
-      payment_methods: [+process.env.PAYMOB_PAYMENT_METHODS],
+      payment_methods: paymentMethods,
       items: order.items.map((item) => ({
         name: item?.product?.name || `Product ID: ${item.productId}`,
-        amount: parseFloat(item.price * 100), // Convert to cents
+        amount: Number.parseFloat(item.price * 100), // Convert to cents
         quantity: item.quantity,
       })),
       billing_data: {
@@ -72,29 +85,26 @@ export const processPaymobPayment = async ({
           phone_number: user?.phone || "+201125773493",
         },
       },
-      extras: {
-        redirection_url: redirectUrl,
-      },
       special_reference: order.orderNumber,
       expiration: 3600,
-      notification_url: redirectUrl + "2",
-      redirection_url: "http://127.0.0.1:3100/api/orders/paymob2",
+      // notification_url: `${process.env.BASE_URL}/api/payments/callback`,
+      // redirection_url:
+      //   redirectUrl || `${process.env.BASE_URL}/api/payments/callback`,
+      notification_url: `https://unwaddling-jericho-checkable.ngrok-free.dev/api/payments/callback`,
+      redirection_url:
+        redirectUrl ||
+        `https://unwaddling-jericho-checkable.ngrok-free.dev/api/payments/callback`,
     };
 
-    console.log("Payment Data:", paymentData);
-
     // Create payment intention with Paymob API
-    const createPaymentLink = await fetch(
-      `${process.env.PAYMOB_BASE_URL}/v1/intention`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Token ${process.env.PAYMOB_SECRET_KEY}`,
-        },
-        body: JSON.stringify(paymentData),
-      }
-    );
+    const createPaymentLink = await fetch(`${paymob.baseUrl}/v1/intention`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Token ${paymob.secretKey}`,
+      },
+      body: JSON.stringify(paymentData),
+    });
 
     if (!createPaymentLink.ok) {
       const errorText = await createPaymentLink.text();
@@ -106,20 +116,19 @@ export const processPaymobPayment = async ({
 
     // Extract payment information
     const payment_key = paymentLinkData?.payment_keys[0]?.key;
-    const order_id = paymentLinkData?.payment_keys[0]?.order_id;
     const client_secret = paymentLinkData?.client_secret;
-    const unifiedCheckout = `${process.env.PAYMOB_BASE_URL}/unifiedcheckout/?publicKey=${process.env.PAYMOB_PUBLIC_KEY}&clientSecret=${client_secret}`;
-    const iframe = `${process.env.PAYMOB_BASE_URL}/api/acceptance/iframes/948177?payment_token=${payment_key}`;
-    const iframe2 = `${process.env.PAYMOB_BASE_URL}/api/acceptance/iframes/948178?payment_token=${payment_key}`;
+    const unifiedCheckout = `${paymob.baseUrl}/unifiedcheckout/?publicKey=${paymob.publicKey}&clientSecret=${client_secret}`;
+    // 950122, 950121
 
+    const iframes = iframeIds.map((iframeId) => ({
+      iframeId,
+      url: `${paymob.baseUrl}/api/acceptance/iframes/${iframeId}?payment_token=${payment_key}`,
+    }));
     return {
       success: true,
-      paymentId: paymentLinkData.id,
-      unifiedCheckout,
-      iframe,
-      iframe2,
-      order_id,
-      paymentLinkData,
+      paymentLink: unifiedCheckout,
+      iframes,
+      message: getTranslation(lang, "paymentLinkCreated"),
     };
   } catch (error) {
     console.error("Paymob payment processing error:", error);
@@ -129,6 +138,22 @@ export const processPaymobPayment = async ({
       error: error.message,
     };
   }
+};
+
+const parseNumberArray = (value) => {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((v) => Number(v.trim()))
+    .filter((v) => !Number.isNaN(v));
+};
+
+const parseStringArray = (value) => {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
 };
 
 /**
@@ -144,7 +169,7 @@ export const verifyPaymobPayment = async (req) => {
       throw new Error("Invalid webhook payload");
     }
 
-    const { order, type, success } = payload;
+    const { order, success } = payload;
 
     // Get the order ID from the extras
     const orderId = order.extras?.order_id;
@@ -215,7 +240,6 @@ export async function getPaymobAuthToken() {
       throw new Error(`Failed to get auth token: ${errorText}`);
     }
     const data = await response.json();
-    console.log("Auth Token Data:", data);
 
     return data.token;
   } catch (error) {
@@ -338,7 +362,7 @@ export async function getPaymobOrder(merchant_order_id) {
       throw new Error(`Failed to get Paymob order: ${errorText}`);
     }
     const data = await response.json();
-    console.log("Get Order Data:", data);
+    console.log("Get Order Data:", data.id);
 
     return data;
   } catch (error) {

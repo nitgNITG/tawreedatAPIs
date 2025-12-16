@@ -91,6 +91,14 @@ const applicationSettingsSchema = (lang) => {
       .int()
       .min(1)
       .default(5),
+    paymentAttempts: z
+      .number({
+        required_error: getTranslation(lang, "paymentAttemptsRequired"),
+        invalid_type_error: getTranslation(lang, "invalidNumber"),
+      })
+      .int()
+      .min(1)
+      .default(5),
 
     loginAsGuest: z.boolean().default(false),
     permanentDelete: z.boolean().default(false),
@@ -113,10 +121,8 @@ router
   .get(async (req, res) => {
     const lang = langReq(req);
     try {
-      const query = new FeatureApi(req).fields().data;
-      const settings = await prisma.applicationSettings.findFirst({
-        ...(query ?? {}),
-      });
+      const data = new FeatureApi(req).fields().data;
+      const settings = await prisma.applicationSettings.findFirst(data);
 
       if (!settings) {
         return res.status(404).json({
