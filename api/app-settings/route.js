@@ -111,6 +111,7 @@ const applicationSettingsSchema = (lang) => {
     paymob_public_key: z.string().optional(),
     paymob_base_url: z.url().optional(),
     paymob_payment_methods: z.string().optional(),
+    paymob_Iframes: z.string().optional(),
   });
 };
 
