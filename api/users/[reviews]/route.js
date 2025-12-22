@@ -14,7 +14,7 @@ router.route("/:id/reviews").get(authorization, async (req, res) => {
     const { id } = req.params;
     const isAdmin = user.role === "ADMIN";
 
-    if (!isAdmin || user.id !== id)
+    if (!isAdmin && user.id !== id)
       return res.status(403).json({
         message: getTranslation(lang, "forbidden"),
       });

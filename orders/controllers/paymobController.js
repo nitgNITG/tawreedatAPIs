@@ -87,13 +87,13 @@ export const processPaymobPayment = async ({
       },
       special_reference: order.orderNumber,
       expiration: 3600,
-      // notification_url: `${process.env.BASE_URL}/api/payments/callback`,
-      // redirection_url:
-      //   redirectUrl || `${process.env.BASE_URL}/api/payments/callback`,
-      notification_url: `https://unwaddling-jericho-checkable.ngrok-free.dev/api/payments/callback`,
+      notification_url: `${process.env.BASE_URL}/api/payments/callback`,
       redirection_url:
-        redirectUrl ||
-        `https://unwaddling-jericho-checkable.ngrok-free.dev/api/payments/callback`,
+        redirectUrl || `${process.env.BASE_URL}/api/payments/callback`,
+      // notification_url: `https://unwaddling-jericho-checkable.ngrok-free.dev/api/payments/callback`,
+      // redirection_url:
+      //   redirectUrl ||
+      //   `https://unwaddling-jericho-checkable.ngrok-free.dev/api/payments/callback`,
     };
 
     // Create payment intention with Paymob API
