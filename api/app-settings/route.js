@@ -119,9 +119,15 @@ const router = express.Router();
 
 router
   .route("/")
-  .get(async (req, res) => {
+  .get(authorization, async (req, res) => {
     const lang = langReq(req);
+    const isAdmin = req.user.role === "ADMIN";
     try {
+      if (!isAdmin)
+        return res
+          .status(403)
+          .json({ message: getTranslation(lang, "forbidden") });
+
       const data = new FeatureApi(req).fields().data;
       const settings = await prisma.applicationSettings.findFirst(data);
 
@@ -191,5 +197,36 @@ router
       });
     }
   });
+
+router.route("/mobile").get(async (req, res) => {
+  const lang = langReq(req);
+  try {
+    const data = new FeatureApi(req).fields().data;
+    const settings = await prisma.applicationSettings.findFirst(data);
+
+    if (!settings) {
+      return res.status(404).json({
+        message: getTranslation(lang, "settingsNotFound"),
+      });
+    }
+
+    delete settings.paymob_Iframes;
+    delete settings.paymob_api_key;
+    delete settings.paymob_base_url;
+    delete settings.paymob_payment_methods;
+    delete settings.paymob_public_key;
+    delete settings.paymob_secret_key;
+
+    return res
+      .status(200)
+      .json({ settings, message: getTranslation(lang, "success") });
+  } catch (error) {
+    console.error("Error fetching app settings:", error);
+    return res.status(500).json({
+      message: getTranslation(lang, "internalError"),
+      error: error.message,
+    });
+  }
+});
 
 export default router;
