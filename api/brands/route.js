@@ -94,7 +94,7 @@ router
 
         const brand = await prisma.brand.create({
           data,
-          ...(query ?? {}),
+          ...(query ?? []),
         });
 
         res.status(201).json({

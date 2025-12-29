@@ -385,7 +385,7 @@ router.post("/callback", async (req, res) => {
         where: { id: order.id },
         data: {
           paymentStatus: "FAILED",
-           paymentAttempts: {
+          paymentAttempts: {
             updateMany: {
               where: {
                 orderId: order.id,

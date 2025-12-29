@@ -98,14 +98,31 @@ model Wallet {
 }
 
 model UserAddress {
-  id        Int      @id @default(autoincrement())
-  address   String
-  lat       String
-  long      String
-  userId    String
+  id Int @id @default(autoincrement())
+
+  // Address info
+  name    String // e.g. "Home", "Work", "Office"
+  address String
+  lat     String
+  long    String
+
+  // Extra useful fields
+  city       String?
+  state      String?
+  country    String?
+  postalCode String?
+  notes      String?
+
+  // Flags
+  isDefault Boolean @default(false)
+
+  // Relations
+  userId String
+  User   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId], map: "Address_userId_fkey")
 }

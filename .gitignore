@@ -7,3 +7,5 @@ uploads/*
 # !uploads/.gitkeep
 # !uploads/**/
 !uploads/**/.gitkeep
+
+/VScode/

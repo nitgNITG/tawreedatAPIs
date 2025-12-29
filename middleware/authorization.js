@@ -2,6 +2,19 @@ import jwt from "jsonwebtoken";
 import prisma from "../prisma/client.js";
 import getTranslation from "./getTranslation.js";
 
+/**
+ * Authorization middleware
+ *
+ * Validates JWT token, checks user existence, and ensures the token is
+ * still valid after password changes.
+ *
+ * Attaches the authenticated user to `req.user`.
+ *
+ * @param {import("express").Request & { user?: import("@prisma/client").User }} req - Express request object
+ * @param {import("express").Response} res - Express response object
+ * @param {import("express").NextFunction} next - Express next middleware
+ */
+
 const authorization = async (req, res, next) => {
   const lang = req.query.lang || "ar";
 
@@ -35,7 +48,7 @@ const authorization = async (req, res, next) => {
           message: getTranslation(lang, "user_not_found"),
         });
       }
-      const timeChangedPassword = parseInt(
+      const timeChangedPassword = Number.parseInt(
         user.passwordLastUpdated.getTime() / 1000,
         10
       );
