@@ -28,8 +28,10 @@ export const userAddressSchema = (lang) => {
     country: z.string().optional(),
     postalCode: z.string().optional(),
     notes: z.string().optional(),
-
     isDefault: z.boolean().optional(),
+    buildingNo: z.string().optional(),
+    floorNo: z.string().optional(),
+    apartmentNo: z.string().optional(),
   });
 };
 

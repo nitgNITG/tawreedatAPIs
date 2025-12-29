@@ -10,7 +10,9 @@ const orderCreateSchema = z.object({
   paymentMethod: z
     .enum(["CREDIT_CARD", "PAYPAL", "BANK_TRANSFER", "CASH_ON_DELIVERY"])
     .default("CASH_ON_DELIVERY"),
-  shippingAddress: z.string().optional(),
+  userAddressId: z.number({
+    required_error: "userAddressId is required",
+  }),
   notes: z.string().optional(),
 });
 // Utility to generate a unique order number
@@ -138,6 +140,33 @@ router
         const totalAmount = subtotal;
         // TODO: const totalAmount = subtotal + shippingCost + taxAmount - discount;
 
+        // Fetch user address
+        const userAddress = await tx.userAddress.findFirst({
+          where: {
+            id: data.userAddressId,
+            userId: user.id,
+          },
+        });
+
+        if (!userAddress) {
+          throw new Error(getTranslation(lang, "address_not_found"));
+        }
+
+        const shippingAddress = {
+          name: userAddress.name,
+          address: userAddress.address,
+          city: userAddress.city,
+          state: userAddress.state,
+          country: userAddress.country,
+          postalCode: userAddress.postalCode,
+          lat: userAddress.lat,
+          long: userAddress.long,
+          notes: userAddress.notes,
+          buildingNo: userAddress.buildingNo,
+          floorNo: userAddress.floorNo,
+          apartmentNo: userAddress.apartmentNo,
+        };
+
         // Step 4: Create order
         const newOrder = await tx.order.create({
           data: {
@@ -147,6 +176,7 @@ router
             shippingCost,
             discount,
             taxAmount,
+            shippingAddress,
             ...data,
             items: {
               create: orderItemsToCreate,

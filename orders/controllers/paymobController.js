@@ -14,6 +14,17 @@ import prisma from "../../prisma/client.js";
  *   price: number,
  *   product: { name: string }
  * }>} options.order.items
+ * @param {Object} options.order.shippingAddress - Immutable shipping address snapshot
+ * @param {string} options.order.shippingAddress.address
+ * @param {string} options.order.shippingAddress.name
+ * @param {string=} options.order.shippingAddress.buildingNo
+ * @param {string=} options.order.shippingAddress.floorNo
+ * @param {string=} options.order.shippingAddress.apartmentNo
+ * @param {string=} options.order.shippingAddress.city
+ * @param {string=} options.order.shippingAddress.state
+ * @param {string=} options.order.shippingAddress.country
+ * @param {string=} options.order.shippingAddress.postalCode
+ * @param {string=} options.order.shippingAddress.notes
  * @param {import("@prisma/client").User } options.user
  * @param {string} options.lang - Language for translations
  * @param {string?} options.redirectUrl - URL to redirect after payment
@@ -53,6 +64,7 @@ export const processPaymobPayment = async ({
     if (!paymentMethods.length) {
       throw new Error("No Paymob payment methods configured");
     }
+    const shipping = order.shippingAddress || {};
 
     // Create payment data for Paymob
     const paymentData = {
@@ -65,24 +77,28 @@ export const processPaymobPayment = async ({
         quantity: item.quantity,
       })),
       billing_data: {
-        apartment: user?.address?.apartment || "N/A",
+        apartment: shipping.apartmentNo || "N/A",
+        floor: shipping.floorNo || "N/A",
+        building: shipping.buildingNo || shipping.name || "N/A",
+
+        street: shipping.address || "N/A",
+        city: shipping.city || "N/A",
+        state: shipping.state || "N/A",
+        postal_code: shipping.postalCode || "00000",
+
         first_name: user?.fullname?.split(" ")[0] || "Customer",
         last_name: user?.fullname?.split(" ")[1] || "",
-        street: user?.address?.street || "N/A",
-        building: user?.address?.building || "N/A",
         phone_number: user?.phone || "+201000000000",
-        city: user?.address?.city || "N/A",
         country: "EG",
         email: user?.email || "customer@example.com",
-        floor: user?.address?.floor || "N/A",
-        state: user?.address?.state || "N/A",
       },
       customer: {
         first_name: user?.fullname?.split(" ")[0] || "Customer",
         last_name: user?.fullname?.split(" ")[1] || "",
         email: user?.email || "customer@example.com",
         extras: {
-          phone_number: user?.phone || "+201125773493",
+          phone_number: user?.phone || "N/A",
+          address_notes: shipping.notes || "",
         },
       },
       special_reference: order.orderNumber,

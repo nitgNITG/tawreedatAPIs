@@ -102,6 +102,10 @@ model UserAddress {
   lat     String
   long    String
 
+  buildingNo  String?
+  floorNo     String?
+  apartmentNo String?
+
   // Extra useful fields
   city       String?
   state      String?
@@ -311,7 +315,8 @@ model Order {
   paymentMethod   PaymentMethod @default(CASH_ON_DELIVERY)
   paymentStatus   PaymentStatus @default(PENDING)
   paymentId       String?       @unique
-  shippingAddress String?
+  shippingAddress Json
+  userAddressId   Int?
   notes           String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
