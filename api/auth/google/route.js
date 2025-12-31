@@ -1,4 +1,3 @@
-
 import express from "express";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
@@ -20,6 +19,7 @@ router.post("/verify", async (req, res) => {
       audience: [
         process.env.GOOGLE_WEB_CLIENT_ID,
         process.env.GOOGLE_FLUTTER_CLIENT_ID,
+        process.env.GOOGLE_WEB_FLUTTER_CLIENT_ID,
       ],
     });
     const payload = ticket.getPayload();
