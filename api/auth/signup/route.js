@@ -6,8 +6,7 @@ import getTranslation, { langReq } from "../../../middleware/getTranslation.js";
 import prisma from "../../../prisma/client.js";
 import generateCode from "../../../utils/generateCode.js";
 import parsePhoneNumber from "libphonenumber-js";
-import DeviceDetector from "node-device-detector";
-import DeviceHelper from "node-device-detector/helper.js";
+import { auth } from "../../../firebase/admin.js";
 
 const router = express.Router();
 
@@ -68,11 +67,19 @@ router.post("/", async (req, res) => {
           .status(400)
           .json({ message: getTranslation(lang, "email_already_used") });
     }
-    // hash password
+    //firebase authentication
+    const firebaseUser = await auth.createUser({
+      displayName: data.fullname,
+      email: `${data.phone}@gmail.com`,
+      password: data.password,
+    });
 
+    data.id = firebaseUser.uid;
+    // hash password
     data.password = await bcrypt.hash(data.password, 10);
+
     const user = await prisma.user.create({
-      data
+      data,
     });
     const token = jwt.sign(
       { userId: user.id, role: user.role },
@@ -117,6 +124,11 @@ router.post("/", async (req, res) => {
       message: getTranslation(lang, "login_success"),
       token,
       id: user.id,
+      user: {
+        id: user.id,
+        firebaseEmail: `${user.phone}@gmail.com`,
+        role: user.role,
+      },
     });
   } catch (error) {
     console.error(error);

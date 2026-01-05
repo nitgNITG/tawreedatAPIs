@@ -6,7 +6,6 @@ import { z } from "zod";
 import authorization from "../../middleware/authorization.js";
 import upload from "../../middleware/upload.js";
 import uploadImage from "../../utils/uploadImage.js";
-import { url } from "inspector";
 
 const router = express.Router();
 
@@ -129,7 +128,7 @@ router
 
       const ad = await prisma.ad.create({
         data,
-        ...(query ?? {}),
+        ...(query ?? []),
       });
 
       return res.status(201).json({
@@ -157,7 +156,7 @@ router
         .keyword(["title", "description"], "OR").data;
 
       const totalCount = await prisma.ad.count({ where: data.where });
-      const totalPages = Math.ceil(totalCount / parseInt(data.take));
+      const totalPages = Math.ceil(totalCount / Number.parseInt(data.take));
       const ads = await prisma.ad.findMany(data);
 
       res.status(200).json({ ads, totalCount, totalPages });

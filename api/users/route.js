@@ -8,6 +8,7 @@ import { parsePhoneNumberWithError } from "libphonenumber-js";
 import bcrypt from "bcrypt";
 import upload from "../../middleware/upload.js";
 import uploadImage from "../../utils/uploadImage.js";
+import { auth } from "../../firebase/admin.js";
 
 export const userSchema = (lang) => {
   return z.object({
@@ -143,6 +144,12 @@ router
             .status(400)
             .json({ message: getTranslation(lang, "email_already_used") });
       }
+      const firebaseUser = await auth.createUser({
+        displayName: data.fullname,
+        email: `${data.phone}@gmail.com`,
+        password: data.password,
+      });
+
       const hashPassword = await bcrypt.hash(data.password, 10);
 
       let imageUrl = null;
@@ -150,6 +157,7 @@ router
         imageUrl = await uploadImage(req.file, `/users/${Date.now()}`);
       const user = await prisma.user.create({
         data: {
+          id: firebaseUser.uid,
           ...data,
           password: hashPassword,
           imageUrl,

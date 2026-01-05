@@ -1,5 +1,12 @@
 const lang = {
   en: {
+    notification_brand_updated_title: "Brand Updated",
+    notification_brand_updated_desc: (fullname, brandNameEn, brandNameAr) =>
+      `${fullname} updated the brand: ${brandNameEn}.`,
+    notification_brand_created_title: "New Brand Created",
+    notification_brand_created_desc: (fullname, brandNameEn, brandNameAr) =>
+      `${fullname} created a new brand: ${brandNameEn}.`,
+
     notification_payment_success_title_user: "Payment successful",
     notification_payment_success_desc_user: (amount, orderNumber) =>
       `Your payment of ${amount} EGP for order #${orderNumber} was successful.`,
@@ -10,10 +17,13 @@ const lang = {
     notification_category_created_desc: (fullname, categoryName) =>
       `${fullname} has created a new category: ${categoryName}.`,
     notification_category_updated_title: "Category Updated",
-    notification_category_updated_desc: (fullname, categoryName) =>
-      `${fullname} has updated the category: ${categoryName}.`,
+    notification_category_updated_desc: (
+      fullname,
+      categoryNameEn,
+      categoryNameAr
+    ) => `${fullname} has updated the category: ${categoryNameEn}.`,
     notification_product_created_title: "New Product Created",
-    notification_product_created_desc: (fullname, productName) =>
+    notification_product_created_desc: (fullname, productName, productNameAr) =>
       `${fullname} has created a new product: ${productName}.`,
     notification_order_created_title_user: "Order Placed",
     notification_order_created_desc_user: (totalAmount) =>
@@ -33,7 +43,7 @@ const lang = {
       `Order #${orderId} is now ${status.toLowerCase()}.`,
 
     notification_product_updated_title: "Product Updated",
-    notification_product_updated_desc: (fullname, productName) =>
+    notification_product_updated_desc: (fullname, productName, productNameAr) =>
       `${fullname} updated the product: ${productName}`,
     user_isBlocked: "This account is blocked.",
     internalError: "Server error, please try again.",
@@ -320,6 +330,16 @@ Try again in ${duration} minutes or reset your password.`;
     wishlist_cleared: "Wishlist cleared successfully",
   },
   ar: {
+    notification_brand_updated_title: "تم تحديث العلامة التجارية",
+    notification_brand_updated_desc: (fullname, brandNameEn, brandNameAr) =>
+      `${fullname} قام بتحديث العلامة التجارية: ${brandNameAr || brandNameEn}.`,
+
+    notification_brand_created_title: "تم إنشاء علامة تجارية جديدة",
+    notification_brand_created_desc: (fullname, brandNameEn, brandNameAr) =>
+      `${fullname} قام بإنشاء علامة تجارية جديدة: ${
+        brandNameAr || brandNameEn
+      }.`,
+
     notification_payment_success_title_user: "تم الدفع بنجاح",
     notification_payment_success_desc_user: (amount, orderNumber) =>
       `تم استلام دفعة بقيمة ${amount} جنيه للطلب رقم ${orderNumber}.`,
@@ -331,11 +351,14 @@ Try again in ${duration} minutes or reset your password.`;
     notification_category_created_desc: (fullname, categoryName) =>
       `${fullname} قام بإنشاء فئة جديدة: ${categoryName}.`,
     notification_category_updated_title: "تم تحديث الفئة",
-    notification_category_updated_desc: (fullname, categoryName) =>
-      `${fullname} قام بتحديث الفئة: ${categoryName}.`,
+    notification_category_updated_desc: (
+      fullname,
+      categoryNameEn,
+      categoryNameAr
+    ) => `${fullname} قام بتحديث الفئة: ${categoryNameAr || categoryNameEn}.`,
     notification_product_created_title: "تم إنشاء منتج جديد",
-    notification_product_created_desc: (fullname, productName) =>
-      `${fullname} قام بإنشاء منتج جديد: ${productName}.`,
+    notification_product_created_desc: (fullname, productName, productNameAr) =>
+      `${fullname} قام بإنشاء منتج جديد: ${productNameAr || productName}.`,
     notification_order_created_title_user: "تم إنشاء الطلب",
     notification_order_created_desc_user: (totalAmount) =>
       `تم إنشاء طلبك بنجاح. المبلغ الإجمالي: ${totalAmount}.`,
@@ -355,8 +378,8 @@ Try again in ${duration} minutes or reset your password.`;
       `طلب #${orderId} الآن في حالة ${status.toLowerCase()}.`,
 
     notification_product_updated_title: "تم تحديث المنتج",
-    notification_product_updated_desc: (fullname, productName) =>
-      `${fullname} قام بتحديث المنتج: ${productName}`,
+    notification_product_updated_desc: (fullname, productName, productNameAr) =>
+      `${fullname} قام بتحديث المنتج: ${productNameAr || productName}`,
     remaining_points_fetched: "تم جلب النقاط المتبقية بنجاح.",
     offer_ratio_exceeds_point_back_up_to: (remaining, limit) =>
       `نسبة العرض تتجاوز حد استرداد النقاط للعلامة التجارية. المتبقي حتى: ${remaining} والحد هو ${limit}`,

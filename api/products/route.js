@@ -186,7 +186,7 @@ router
 
       const product = await prisma.product.create({
         data,
-        ...(query ?? {}),
+        ...(query ?? []),
       });
       // Parse images to array format
       const formattedProduct = parseProductImages(product);
@@ -212,23 +212,23 @@ router
           categoryId: data.categoryId,
         },
       });
-      // await pushNotification({
-      //   key: {
-      //     title: "notification_product_created_title",
-      //     desc: "notification_product_created_desc",
-      //   },
-      //   args: {
-      //     title: [],
-      //     desc: [admin.fullname, formattedProduct.name],
-      //   },
-      //   lang,
-      //   users: [],
-      //   adminUserId: admin.id,
-      //   data: {
-      //     navigate: "products",
-      //     route: `/${lang}/products?id=${formattedProduct.id}`,
-      //   },
-      // });
+      await pushNotification({
+        key: {
+          title: "notification_product_created_title",
+          desc: "notification_product_created_desc",
+        },
+        args: {
+          title: [],
+          desc: [admin.fullname, formattedProduct.name, formattedProduct.nameAr],
+        },
+        lang,
+        users: [],
+        adminUserId: admin.id,
+        data: {
+          navigate: "products",
+          route: `/${lang}/products?id=${formattedProduct.id}`,
+        },
+      });
     } catch (error) {
       console.error(error);
       res.status(500).json({

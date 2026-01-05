@@ -69,8 +69,15 @@ router.post("/verify", async (req, res) => {
     });
 
     if (!user) {
+      const firebaseUser = await auth.createUser({
+        displayName: fullname || "Apple User",
+        email,
+        password: "123456",
+      });
+      // Create new user
       user = await prisma.user.create({
         data: {
+          id: firebaseUser.uid,
           email,
           fullname: fullname || "Apple User",
           loginType: "APPLE",
@@ -86,7 +93,7 @@ router.post("/verify", async (req, res) => {
         role: user.role,
       },
       process.env.SECRET_KEY,
-      { expiresIn: "7d" }
+      { expiresIn: process.env.JWT_EXPIRY || "7d" }
     );
 
     console.log("✅ Apple login successful for:", email);

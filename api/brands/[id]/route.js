@@ -8,6 +8,7 @@ import uploadImage from "../../../utils/uploadImage.js";
 import deleteImage from "../../../utils/deleteImage.js";
 import { updateBrandSchema } from "../../../schemas/brand.schema.js";
 import revalidateDashboard from "../../../utils/revalidateDashboard.js";
+import pushNotification from "../../../utils/push-notification.js";
 
 const router = Router();
 
@@ -15,9 +16,9 @@ router
   .route("/:id")
   .get(async (req, res) => {
     const lang = langReq(req);
-    const id = parseInt(req.params.id);
+    const id = Number.parseInt(req.params.id);
 
-    if (isNaN(id)) {
+    if (Number.isNaN(id)) {
       return res.status(400).json({
         message: getTranslation(lang, "invalid_brand_id"),
       });
@@ -47,9 +48,9 @@ router
     upload.fields([{ name: "logoUrl" }, { name: "coverUrl" }]),
     async (req, res) => {
       const lang = langReq(req);
-      const id = parseInt(req.params.id);
+      const id = Number.parseInt(req.params.id);
 
-      if (isNaN(id)) {
+      if (Number.isNaN(id)) {
         return res.status(400).json({
           message: getTranslation(lang, "invalid_brand_id"),
         });
@@ -165,7 +166,7 @@ router
         const updatedBrand = await prisma.brand.update({
           where: { id },
           data,
-          ...(query ?? {}),
+          ...(query ?? []),
         });
 
         res.status(200).json({
@@ -173,6 +174,23 @@ router
           brand: updatedBrand,
         });
         await revalidateDashboard("brands");
+        await pushNotification({
+          key: {
+            title: "notification_brand_updated_title",
+            desc: "notification_brand_updated_desc",
+          },
+          args: {
+            title: [],
+            desc: [admin.fullname, updatedBrand?.name, updatedBrand?.nameAr],
+          },
+          lang,
+          users: [],
+          adminUserId: admin.id,
+          data: {
+            navigate: "brands",
+            route: `/${lang}/brands/${updatedBrand.id}`,
+          },
+        });
       } catch (error) {
         console.error(error);
         res.status(500).json({
@@ -184,9 +202,9 @@ router
   )
   .delete(authorization, async (req, res) => {
     const lang = langReq(req);
-    const id = parseInt(req.params.id);
+    const id = Number.parseInt(req.params.id);
 
-    if (isNaN(id)) {
+    if (Number.isNaN(id)) {
       return res.status(400).json({
         message: getTranslation(lang, "invalid_brand_id"),
       });

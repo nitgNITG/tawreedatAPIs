@@ -146,6 +146,9 @@ model Faqs {
   language  Language? @default(EN)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  sortId    Int       @default(0)
+
+  @@index([sortId])
 }
 
 // Categories for products
@@ -216,6 +219,7 @@ model Product {
   wishlist   WishlistItem[]
   attributes ProductAttribute[]
 
+  @@index([sortId])
   @@fulltext([name, nameAr, description, descriptionAr])
   @@map("products")
 }
@@ -264,6 +268,7 @@ model Brand {
   updatedAt  DateTime        @updatedAt
   categories BrandCategory[]
 
+  @@index([sortId])
   @@fulltext([name, nameAr, description, descriptionAr])
   @@map("brands")
 }
@@ -445,9 +450,11 @@ model Ad {
   timing          Int           @default(0)
   closable        Boolean?      @default(true)
   displayDuration Int           @default(24)
+  sortId          Int           @default(0)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
+  @@index([sortId])
   @@map("Ads")
 }
 
@@ -549,8 +556,11 @@ model OnBoarding {
   subtitleAr String? // Arabic subtitle
   content    String?
   contentAr  String? // Arabic content
+  sortId     Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@index([sortId])
 }
 
 model ContactUs {
@@ -576,7 +586,9 @@ model Article {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   author      String   @db.VarChar(255)
+  sortId      Int      @default(0)
 
+  @@index([sortId])
   @@map("Articles")
 }
 

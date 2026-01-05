@@ -192,6 +192,7 @@ router.post("/", async (req, res) => {
       user: {
         id: user.id,
         firebaseEmail: `${user.phone}@gmail.com`,
+        role: user.role,
       },
     });
   } catch (error) {

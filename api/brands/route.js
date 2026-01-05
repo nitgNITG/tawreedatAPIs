@@ -11,6 +11,7 @@ import {
 } from "../../schemas/brand.schema.js";
 import deleteImage from "../../utils/deleteImage.js";
 import revalidateDashboard from "../../utils/revalidateDashboard.js";
+import pushNotification from "../../utils/push-notification.js";
 
 const router = Router();
 
@@ -33,7 +34,7 @@ router
 
       const totalBrands = await prisma.brand.count({ where: data.where });
       const brands = await prisma.brand.findMany(data);
-      const totalPages = Math.ceil(totalBrands / (parseInt(data.take) || 10));
+      const totalPages = Math.ceil(totalBrands / (Number.parseInt(data.take) || 10));
 
       res.status(200).json({ brands, totalPages, totalBrands });
     } catch (error) {
@@ -102,6 +103,23 @@ router
           brand,
         });
         await revalidateDashboard("brands");
+        await pushNotification({
+          key: {
+            title: "notification_brand_created_title",
+            desc: "notification_brand_created_desc",
+          },
+          args: {
+            title: [],
+            desc: [admin.fullname, brand.name, brand.nameAr],
+          },
+          lang,
+          users: [],
+          adminUserId: admin.id,
+          data: {
+            navigate: "brands",
+            route: `/${lang}/brands/${brand.id}`,
+          },
+        });
       } catch (error) {
         console.error(error);
         res.status(500).json({

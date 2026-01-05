@@ -354,7 +354,7 @@ router
         product = await prisma.product.update({
           where: { id },
           data: updateData,
-          ...(query ?? {}),
+          ...(query ?? []),
         });
       }
       const formattedProduct = parseProductImages(product);
@@ -383,23 +383,27 @@ router
           categoryId: data.categoryId,
         },
       });
-      // await pushNotification({
-      //   key: {
-      //     title: "notification_product_updated_title",
-      //     desc: "notification_product_updated_desc",
-      //   },
-      //   args: {
-      //     title: [],
-      //     desc: [admin.fullname, formattedProduct.name],
-      //   },
-      //   lang,
-      //   users: [],
-      //   adminUserId: admin.id,
-      //   data: {
-      //     navigate: "products",
-      //     route: `/${lang}/products?id=${formattedProduct.id}`,
-      //   },
-      // });
+      await pushNotification({
+        key: {
+          title: "notification_product_updated_title",
+          desc: "notification_product_updated_desc",
+        },
+        args: {
+          title: [],
+          desc: [
+            admin.fullname,
+            formattedProduct.name,
+            formattedProduct.nameAr,
+          ],
+        },
+        lang,
+        users: [],
+        adminUserId: admin.id,
+        data: {
+          navigate: "products",
+          route: `/${lang}/products?id=${formattedProduct.id}`,
+        },
+      });
     } catch (error) {
       console.error(error);
       res.status(500).json({

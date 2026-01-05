@@ -85,7 +85,7 @@ export const categorySchema = (lang) => {
     descriptionAr: z.string().optional(),
     imageUrl: z.string().optional(),
     parentId: z
-      .union([z.string().transform((val) => parseInt(val)), z.number()])
+      .union([z.string().transform((val) => Number.parseInt(val)), z.number()])
       .optional(),
     isActive: z
       .union([
@@ -142,27 +142,27 @@ router
 
         const category = await prisma.category.create({
           data,
-          ...(query ?? {}),
+          ...query,
         });
         res.status(200).json({ message: "category_created", category });
         await revalidateDashboard("categories");
-        // await pushNotification({
-        //   key: {
-        //     title: "notification_category_created_title",
-        //     desc: "notification_category_created_desc",
-        //   },
-        //   args: {
-        //     title: [],
-        //     desc: [admin.fullname, category.name],
-        //   },
-        //   lang,
-        //   users: [],
-        //   adminUserId: admin.id,
-        //   data: {
-        //     navigate: "categories",
-        //     route: `/${lang}/categories/${category.id}`,
-        //   },
-        // });
+        await pushNotification({
+          key: {
+            title: "notification_category_created_title",
+            desc: "notification_category_created_desc",
+          },
+          args: {
+            title: [],
+            desc: [admin.fullname, category.name, category.nameAr],
+          },
+          lang,
+          users: [],
+          adminUserId: admin.id,
+          data: {
+            navigate: "categories",
+            route: `/${lang}/categories/${category.id}`,
+          },
+        });
       } catch (error) {
         console.error(error);
         res.status(400).json({
@@ -197,7 +197,7 @@ router
       }
 
       const totalCount = await prisma.category.count({ where: data.where });
-      const totalPages = Math.ceil(totalCount / (parseInt(data.take) || 10));
+      const totalPages = Math.ceil(totalCount / (Number.parseInt(data.take) || 10));
 
       const categories = await prisma.category.findMany(data);
 

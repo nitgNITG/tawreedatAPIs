@@ -8,6 +8,7 @@ import uploadImage from "../../../utils/uploadImage.js";
 import deleteImage from "../../../utils/deleteImage.js";
 import { userSchema } from "../route.js";
 import FeatureApi from "../../../utils/FetchDataApis.js";
+import { auth } from "../../../firebase/admin.js";
 
 const router = express.Router();
 
@@ -72,7 +73,13 @@ router
           .status(404)
           .json({ message: getTranslation(lang, "user_not_found") });
 
-      if (data.phone) {
+      let firebaseData = {};
+      const isPhoneChanged = data.phone && data.phone !== isUser.phone;
+      const isNameChanged = data.fullname && data.fullname !== isUser.fullname;
+      const isEmailChanged = data.email && data.email !== isUser.email;
+      if (isNameChanged) firebaseData.displayName = data.fullname;
+
+      if (isPhoneChanged) {
         const isPhone = await prisma.user.findFirst({
           where: { phone: data.phone, AND: { NOT: { id } } },
         });
@@ -80,8 +87,9 @@ router
           return res
             .status(400)
             .json({ message: getTranslation(lang, "phone_already_used") });
+        firebaseData.email = `${data.phone}@gmail.com`;
       }
-      if (data.email) {
+      if (isEmailChanged) {
         const isEmail = await prisma.user.findFirst({
           where: { email: data.email, AND: { NOT: { id } } },
         });
@@ -89,10 +97,22 @@ router
           return res
             .status(400)
             .json({ message: getTranslation(lang, "email_already_used") });
+        if (!isUser.phone && !isPhoneChanged) {
+          firebaseData.email = data.email;
+        }
       }
       if (data.password) {
         const hashedPassword = await bcrypt.hash(data.password, 10);
         data.password = hashedPassword;
+        firebaseData.password = data.password;
+      }
+      if (
+        isNameChanged ||
+        isPhoneChanged ||
+        (isEmailChanged && !isUser.phone) ||
+        data.password
+      ) {
+        await auth.updateUser(id, firebaseData);
       }
 
       // Prepare update data with only changed fields

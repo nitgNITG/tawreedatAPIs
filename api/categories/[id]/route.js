@@ -86,7 +86,7 @@ router
         const category = await prisma.category.update({
           where: { id },
           data,
-          ...(query ?? {}),
+          ...(query ?? []),
         });
         res.status(200).json({
           message: getTranslation(lang, "category_updated"),
@@ -100,7 +100,7 @@ router
           },
           args: {
             title: [],
-            desc: [admin.fullname, category.name],
+            desc: [admin.fullname, category.name, category.nameAr],
           },
           lang,
           users: [],

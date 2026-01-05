@@ -2,6 +2,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 import prisma from "../../../prisma/client.js";
+import { auth } from "../../../firebase/admin.js";
 
 const router = express.Router();
 const client = new OAuth2Client();
@@ -35,9 +36,16 @@ router.post("/verify", async (req, res) => {
     let user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
+      //firebase authentication
+      const firebaseUser = await auth.createUser({
+        displayName: fullname,
+        email,
+        password: "123456",
+      });
       // Create new user
       user = await prisma.user.create({
         data: {
+          id: firebaseUser.uid,
           email,
           fullname,
           imageUrl,
@@ -52,8 +60,8 @@ router.post("/verify", async (req, res) => {
         userId: user.id,
         role: user.role,
       },
-      process.env.SECRET_KEY
-      // { expiresIn: process.env.JWT_EXPIRY || "7d" }
+      process.env.SECRET_KEY,
+      { expiresIn: process.env.JWT_EXPIRY || "7d" }
     );
     console.log("Generated JWT:", token);
 
