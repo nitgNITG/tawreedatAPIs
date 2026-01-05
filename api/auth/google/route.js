@@ -21,6 +21,7 @@ router.post("/verify", async (req, res) => {
         process.env.GOOGLE_WEB_CLIENT_ID,
         process.env.GOOGLE_FLUTTER_CLIENT_ID,
         process.env.GOOGLE_WEB_FLUTTER_CLIENT_ID,
+        process.env.GOOGLE_FLUTTER_APPLE_CLIENT_ID,
       ],
     });
     const payload = ticket.getPayload();
