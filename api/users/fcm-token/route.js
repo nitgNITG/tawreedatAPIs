@@ -90,7 +90,7 @@ router.post("/", authorization, async (req, res) => {
       );
 
       const results = await Promise.all(sendPromises);
-      const successCount = results.filter((result) => result).length;
+      const successCount = results.filter(Boolean).length;
 
       console.log(undeliveredNotificationsSnapshot.size);
       console.log(successCount);

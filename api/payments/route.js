@@ -75,9 +75,17 @@ router.post("/", authorization, async (req, res) => {
     // ⛔ Block parallel attempts
     const pending = order.paymentAttempts.find((a) => a.status === "PENDING");
     if (pending) {
-      return res.status(409).json({
-        message: getTranslation(lang, "paymentAlreadyInProgress"),
+      await prisma.paymentAttempt.update({
+        where: { id: pending.id },
+        data: {
+          status: "FAILED",
+          rawResponse: { message: "Cancelled due to new payment attempt" },
+          provider: "PAYMOB",
+        },
       });
+      // return res.status(409).json({
+      //   message: getTranslation(lang, "paymentAlreadyInProgress"),
+      // });
     }
 
     const attempt = await prisma.paymentAttempt.create({
@@ -136,15 +144,15 @@ router.get("/", authorization, async (req, res) => {
 
   if (user.role !== "ADMIN")
     return res.status(403).json({ message: getTranslation(lang, "forbidden") });
-//   const validation = getPaymentSchema.safeParse(req.query);
-//   if (!validation.success) {
-//     return res.status(422).json({
-//       message: getTranslation(lang, "validationError"),
-//       errors: validation.error.issues,
-//     });
-//   }
+  //   const validation = getPaymentSchema.safeParse(req.query);
+  //   if (!validation.success) {
+  //     return res.status(422).json({
+  //       message: getTranslation(lang, "validationError"),
+  //       errors: validation.error.issues,
+  //     });
+  //   }
 
-//   const { orderId, intentionId } = validation.data;
+  //   const { orderId, intentionId } = validation.data;
   try {
     const data = new FeatureApi(req)
       .filter()
