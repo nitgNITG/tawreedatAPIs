@@ -97,7 +97,10 @@ router.post("/", authorization, async (req, res) => {
     });
 
     const paymentResult = await processPaymobPayment({
-      order,
+      order: {
+        ...order,
+        attemptId: attempt.id,
+      },
       user,
       lang,
       redirectUrl,

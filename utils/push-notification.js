@@ -98,9 +98,7 @@ const pushNotification = async ({
 
       // Send notifications to admins
       await Promise.all(
-        admins.map(async (user) => {
-          console.log("user-<", user);
-          
+        admins.map(async (user) => {          
           const notificationRef = await db.collection("Notifications").add({
             userId: user.id,
             title: getTranslation("en", key?.title, args?.title),

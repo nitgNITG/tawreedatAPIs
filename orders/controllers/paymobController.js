@@ -8,6 +8,7 @@ import prisma from "../../prisma/client.js";
  * @param {number} options.order.totalAmount
  * @param {number} options.order.id
  * @param {string} options.order.orderNumber
+ * @param {string} options.order.attemptId - Payment attempt ID
  * @param {Array<{
  *   productId: number,
  *   quantity: number,
@@ -101,7 +102,7 @@ export const processPaymobPayment = async ({
           address_notes: shipping.notes || "",
         },
       },
-      special_reference: order.orderNumber,
+      special_reference: `${order.orderNumber}::ATTEMPT::${order.attemptId}`,
       expiration: 3600,
       notification_url: `${process.env.BASE_URL}/api/payments/callback`,
       redirection_url:
