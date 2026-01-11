@@ -62,6 +62,13 @@ const adminUpdateSchema = (lang) => {
       .number({ message: getTranslation(lang, "invalidTaxAmount") })
       .min(0, { message: getTranslation(lang, "negativeTaxAmount") })
       .optional(),
+    paymentMethod: z
+      .enum(["CREDIT_CARD", "PAYPAL", "BANK_TRANSFER", "CASH_ON_DELIVERY"])
+      .optional(),
+    refundedAmount: z
+      .number({ message: getTranslation(lang, "invalidRefundedAmount") })
+      .min(0, { message: getTranslation(lang, "negativeRefundedAmount") })
+      .optional(),
   });
 };
 

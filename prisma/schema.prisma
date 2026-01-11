@@ -28,11 +28,29 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum PaymentMethod {
+  CREDIT_CARD
+  PAYPAL
+  BANK_TRANSFER
+  CASH_ON_DELIVERY
+}
+
 enum PaymentStatus {
   PENDING
   PAID
-  FAILED
+  PARTIALLY_REFUNDED
   REFUNDED
+  FAILED
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
 }
 
 enum Language {
@@ -71,13 +89,15 @@ model User {
   appleId             String?     @unique
 
   // Relations
-  orders      Order[]
-  cartItems   CartItem[]
-  reviews     Review[]
-  wishlist    WishlistItem[]
-  UserAddress UserAddress[]
-  UserVerify  UserVerify[]
-  wallet      Wallet?
+  orders           Order[]
+  cartItems        CartItem[]
+  reviews          Review[]
+  wishlist         WishlistItem[]
+  UserAddress      UserAddress[]
+  UserVerify       UserVerify[]
+  wallet           Wallet?
+  requestedRefunds Refund[]       @relation("RefundRequestedBy")
+  reviewedRefunds  Refund[]       @relation("RefundReviewedBy")
 
   @@map("users")
 }
@@ -309,48 +329,47 @@ model Supplier {
 
 // Orders
 model Order {
-  id              Int           @id @default(autoincrement())
-  orderNumber     String        @unique
-  customerId      String
-  totalAmount     Float
-  shippingCost    Float         @default(0)
-  discount        Float         @default(0)
-  taxAmount       Float         @default(0)
-  status          OrderStatus   @default(PENDING)
-  paymentMethod   PaymentMethod @default(CASH_ON_DELIVERY)
-  paymentStatus   PaymentStatus @default(PENDING)
-  paymentId       String?       @unique
+  id             Int    @id @default(autoincrement())
+  orderNumber    String @unique
+  customerId     String
+  totalAmount    Float
+  shippingCost   Float  @default(0)
+  discount       Float  @default(0)
+  taxAmount      Float  @default(0)
+  refundedAmount Float  @default(0)
+
+  status        OrderStatus   @default(PENDING)
+  paymentMethod PaymentMethod @default(CASH_ON_DELIVERY)
+  paymentStatus PaymentStatus @default(PENDING)
+
+  paymentId       String?
   shippingAddress Json
   userAddressId   Int?
   notes           String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   customer        User             @relation(fields: [customerId], references: [id])
   items           OrderItem[]
   paymentAttempts PaymentAttempt[]
+  refunds         Refund[]
 
   @@map("orders")
-}
-
-enum PaymentMethod {
-  CREDIT_CARD
-  PAYPAL
-  BANK_TRANSFER
-  CASH_ON_DELIVERY
 }
 
 model PaymentAttempt {
   id          Int           @id @default(autoincrement())
   orderId     Int
-  provider    String // PAYMOB
+  provider    String // PAYMOB, STRIPE, etc
   intentionId String?
   status      PaymentStatus @default(PENDING)
   rawResponse Json?
   createdAt   DateTime      @default(now())
 
-  order Order @relation(fields: [orderId], references: [id])
+  order   Order    @relation(fields: [orderId], references: [id])
+  refunds Refund[]
 
   @@index([orderId])
   @@index([intentionId])
@@ -362,14 +381,64 @@ model OrderItem {
   orderId   Int
   productId String
   quantity  Int
-  price     Float // Price at time of order
+  price     Float // unit price at time of order
   createdAt DateTime @default(now())
 
-  // Relations
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
 
+  refundItems RefundItem[]
+
   @@map("order_items")
+}
+
+model Refund {
+  id               Int             @id @default(autoincrement())
+  orderId          Int
+  paymentAttemptId Int?
+  
+  amount           Float
+  currency         String          @default("EGP")
+  reason           String?
+  status           RefundStatus    @default(REQUESTED)
+
+  provider         String?
+  providerRefundId String?
+  rawResponse      Json?
+  
+  requestedById    String?
+  reviewedById     String?
+  reviewedAt       DateTime?
+  
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  
+  // Relations
+  order            Order           @relation(fields: [orderId], references: [id])
+  paymentAttempt   PaymentAttempt? @relation(fields: [paymentAttemptId], references: [id])
+  requestedBy      User?           @relation("RefundRequestedBy", fields: [requestedById], references: [id])
+  reviewedBy       User?           @relation("RefundReviewedBy", fields: [reviewedById], references: [id])
+  items            RefundItem[]
+
+  @@index([orderId])
+  @@index([providerRefundId])
+  @@index([requestedById])
+  @@index([reviewedById])
+  @@map("refunds")
+}
+
+model RefundItem {
+  id          Int   @id @default(autoincrement())
+  refundId    Int
+  orderItemId Int
+  quantity    Int
+  amount      Float // refunded amount for this item
+
+  refund    Refund    @relation(fields: [refundId], references: [id], onDelete: Cascade)
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id])
+
+  @@unique([refundId, orderItemId])
+  @@map("refund_items")
 }
 
 // Shopping Cart

@@ -55,7 +55,11 @@ router.post("/", authorization, async (req, res) => {
         .status(403)
         .json({ message: getTranslation(lang, "forbidden") });
 
-    if (order.paymentStatus === "PAID")
+    if (
+      order.paymentStatus === "PAID" ||
+      order.paymentStatus === "PARTIALLY_REFUNDED" ||
+      order.paymentStatus === "REFUNDED"
+    )
       return res.status(400).json({
         message: getTranslation(lang, "orderAlreadyPaid"),
       });
