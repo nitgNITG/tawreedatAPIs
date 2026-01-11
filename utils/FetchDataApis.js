@@ -14,7 +14,7 @@ function convertStringBooleans(obj) {
 const transformToNestedObject = (arr) => {
   const result = {};
   const [firstKey, secondKey, value] = arr;
-  const numericValue = isNaN(Number(value)) ? value : Number(value);
+  const numericValue = Number.isNaN(Number(value)) ? value : Number(value);
   const keywords = ["every_", "where_", "some_"];
   const matchedKeyword = keywords.find((keyword) =>
     firstKey.startsWith(keyword)
@@ -39,11 +39,11 @@ const transformToNestedObject = (arr) => {
 };
 
 function isDate(input) {
-  if (!isNaN(input)) {
+  if (!Number.isNaN(input)) {
     return false;
   }
   const date = new Date(input);
-  return date instanceof Date && !isNaN(date);
+  return date instanceof Date && !Number.isNaN(date);
 }
 
 const isStringArray = (input) => {
@@ -74,7 +74,7 @@ const normalizeValues = (obj) => {
         if (item === "false") return false;
         if (item === "null") return null;
         const num = Number(item);
-        return isNaN(num) ? item : num;
+        return Number.isNaN(num) ? item : num;
       });
     } else if (isDate(value)) {
       result[key] = new Date(value);
@@ -90,7 +90,7 @@ const normalizeValues = (obj) => {
       result[key] = null;
     } else {
       const numberValue = Number(value);
-      result[key] = isNaN(numberValue) ? value : numberValue;
+      result[key] = Number.isNaN(numberValue) ? value : numberValue;
     }
   }
   return result;
@@ -106,6 +106,7 @@ class FeatureApi {
     let query = JSON.parse(JSON.stringify(this.req.query));
     const arrData = [
       "fields",
+      "includes",
       "sort",
       "limit",
       "keyword",
@@ -150,7 +151,7 @@ class FeatureApi {
             const nestedField = parts[0];
             const nestedSubField = parts[1];
             const fieldValue = parts[2];
-            const numericValue = isNaN(Number(fieldValue))
+            const numericValue = Number.isNaN(Number(fieldValue))
               ? fieldValue
               : Number(fieldValue);
 
@@ -165,7 +166,7 @@ class FeatureApi {
             // For simple fields like roleId=1
             const fieldName = parts[0];
             const fieldValue = parts[1];
-            const numericValue = isNaN(Number(fieldValue))
+            const numericValue = Number.isNaN(Number(fieldValue))
               ? fieldValue
               : Number(fieldValue);
 
@@ -416,13 +417,42 @@ class FeatureApi {
     return this;
   }
 
+  includes(selectData) {
+    const queryIncludes = this.req.query.includes;
+
+    let includes;
+
+    if (queryIncludes) {
+      includes = this.parseFields(queryIncludes);
+    } else if (selectData) {
+      includes = this.parseFields(selectData);
+    } else {
+      includes = undefined;
+    }
+
+    if (includes) {
+      // Prisma rule: include and select cannot coexist on same level
+      if (this.data.select) {
+        delete this.data.select;
+      }
+
+      // Merge includes safely
+      this.data.include = this.data.include
+        ? this.mergeNestedSelects(this.data.include, includes)
+        : includes;
+    }
+
+    return this;
+  }
+
   limit(limitData) {
-    const limitQuery = parseInt(this.req.query.limit) || limitData;
+    const limitQuery = Number.parseInt(this.req.query.limit) || limitData;
     if (limitQuery) {
       this.data.take = limitQuery;
     }
     return this;
   }
+
   keyword(itemsData, opData) {
     let keyword = this.req.query.keyword;
     let op = this.req.query?.op || opData;
@@ -479,7 +509,7 @@ class FeatureApi {
   }
 
   skip(skipData) {
-    const skip = parseInt(this.req.query.skip) || skipData;
+    const skip = Number.parseInt(this.req.query.skip) || skipData;
     if (skip) {
       this.data.skip = skip;
     }

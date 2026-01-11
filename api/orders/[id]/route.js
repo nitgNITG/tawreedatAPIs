@@ -80,7 +80,7 @@ router.get("/:id", authorization, async (req, res) => {
   const id = req.params.id;
   const user = req.user;
   try {
-    const data = new FeatureApi(req).fields().data;
+    const data = new FeatureApi(req).fields().includes().data;
     const order = await prisma.order.findFirst({
       where: {
         OR: [{ id: Number.isNaN(+id) ? undefined : +id }, { orderNumber: id }],

@@ -88,7 +88,7 @@ router.post("/", authorization, async (req, res) => {
           reviewedById: user.id,
           reviewedAt: new Date(),
           items:
-            amount >= order.totalAmount ? { create: refundItems } : undefined,
+            amount >= order.totalAmount ? undefined : { create: refundItems },
           provider: order.paymentMethod === "CREDIT_CARD" ? "PAYMOB" : "N/A",
           paymentAttemptId: paymentAttempt ? paymentAttempt.id : null,
         },

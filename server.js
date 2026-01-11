@@ -2,9 +2,9 @@ import express from "express";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import cors from "cors";
-import { fileURLToPath, pathToFileURL } from "url";
-import path from "path";
-import fs from "fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import path from "node:path";
+import fs from "node:fs";
 import cookieParser from "cookie-parser";
 import cleanupTempFiles from "./utils/cleanupTemp.js";
 

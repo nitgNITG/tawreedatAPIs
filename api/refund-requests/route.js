@@ -97,7 +97,7 @@ router
             requestedById: user.id,
             provider: order.paymentMethod === "CREDIT_CARD" ? "PAYMOB" : "N/A",
             items:
-              amount >= order.totalAmount ? { create: refundItems } : undefined,
+              amount >= order.totalAmount ? undefined : { create: refundItems },
           },
           include: { items: true },
         });
