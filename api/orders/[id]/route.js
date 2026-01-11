@@ -172,7 +172,7 @@ router.put("/:id", authorization, async (req, res) => {
       const updatedOrder = await tx.order.update({
         where: { id: order.id },
         data,
-        ...(query || {}),
+        ...(query || []),
       });
 
       return updatedOrder;
@@ -183,6 +183,7 @@ router.put("/:id", authorization, async (req, res) => {
 
     // Notify user and admins based on update
     if (data.status === "CANCELLED") {
+      // TODO: reverse product stock
       // Notify user: order cancelled
       await pushNotification({
         key: {

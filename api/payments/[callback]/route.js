@@ -150,7 +150,7 @@ router.post("/callback", async (req, res) => {
         });
 
         // Decrease stock and clear cart
-        await finalizeOrder(tx, order.customerId, order.items);
+        // await finalizeOrder(tx, order.customerId, order.items);
       });
 
       await pushNotification({

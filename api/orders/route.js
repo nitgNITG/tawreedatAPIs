@@ -198,10 +198,10 @@ router
             },
           }),
         });
-        // 5️ ONLY non-card → finalize now
-        if (data.paymentMethod === "CASH_ON_DELIVERY") {
-          await finalizeOrder(tx, user.id, cartItems);
-        }
+        // // 5️ ONLY non-card → finalize now
+        // if (data.paymentMethod === "CASH_ON_DELIVERY") {
+        await finalizeOrder(tx, user.id, cartItems);
+        // }
 
         return newOrder;
       });
