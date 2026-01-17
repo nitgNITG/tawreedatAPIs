@@ -106,13 +106,13 @@ export const categorySchema = (lang) => {
 router
   .route("/")
   .post(
-    authorization,
+    authorization(),
     upload.fields([{ name: "imageUrl" }, { name: "iconUrl" }]),
     async (req, res) => {
       const lang = langReq(req);
       try {
         const admin = req.user;
-        if (admin?.role !== "ADMIN")
+        if (admin?.role !== "admin")
           return res
             .status(403)
             .json({ message: getTranslation(lang, "not_allowed") });
@@ -153,7 +153,7 @@ router
           },
           args: {
             title: [],
-            desc: [admin.fullname, category.name, category.nameAr],
+            desc: [admin.full_name, category.name, category.nameAr],
           },
           lang,
           users: [],
@@ -197,7 +197,9 @@ router
       }
 
       const totalCount = await prisma.category.count({ where: data.where });
-      const totalPages = Math.ceil(totalCount / (Number.parseInt(data.take) || 10));
+      const totalPages = Math.ceil(
+        totalCount / (Number.parseInt(data.take) || 10)
+      );
 
       const categories = await prisma.category.findMany(data);
 

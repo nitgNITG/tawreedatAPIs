@@ -96,11 +96,11 @@ const generateBarcode = async () => {
 const router = express.Router();
 router
   .route("/")
-  .post(authorization, upload.array("images", 5), async (req, res) => {
+  .post(authorization(), upload.array("images", 5), async (req, res) => {
     const lang = langReq(req);
     try {
       const admin = req.user;
-      if (admin?.role !== "ADMIN") {
+      if (admin?.role !== "admin") {
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });
@@ -219,7 +219,11 @@ router
         },
         args: {
           title: [],
-          desc: [admin.fullname, formattedProduct.name, formattedProduct.nameAr],
+          desc: [
+            admin.full_name,
+            formattedProduct.name,
+            formattedProduct.nameAr,
+          ],
         },
         lang,
         users: [],
@@ -237,7 +241,7 @@ router
       });
     }
   })
-  
+
   .get(async (req, res) => {
     const lang = langReq(req);
 
@@ -321,11 +325,11 @@ router
     }
   })
 
-  .delete(authorization, async (req, res) => {
+  .delete(authorization(), async (req, res) => {
     const lang = langReq(req);
     try {
       const admin = req.user;
-      if (admin.role !== "ADMIN")
+      if (admin.role !== "admin")
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });

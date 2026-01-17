@@ -8,13 +8,8 @@ datasource db {
 }
 
 // Enums
-enum UserRole {
-  ADMIN
-  MANAGER
-  CUSTOMER
-}
 
-enum genderType {
+enum Gender {
   MALE
   FEMALE
 }
@@ -67,26 +62,30 @@ enum LoginType {
 
 // User Management
 model User {
-  id                  String      @id @default(uuid())
-  email               String?     @unique @db.VarChar(70)
-  fullname            String      @db.VarChar(50)
-  phone               String?     @unique @db.VarChar(20)
-  password            String?     @db.VarChar(100)
-  imageUrl            String?     @db.VarChar(250)
-  lang                Language    @default(AR)
-  lastLoginAt         DateTime    @default(now())
-  isActive            Boolean     @default(true)
-  isConfirmed         Boolean     @default(true)
-  passwordLastUpdated DateTime    @default(now())
-  isDeleted           Boolean     @default(false)
-  updatedAt           DateTime    @updatedAt
-  createdAt           DateTime    @default(now())
-  birthDate           DateTime?
-  gender              genderType?
-  fcmToken            String?
-  role                UserRole    @default(CUSTOMER)
-  loginType           LoginType   @default(LOCAL)
-  appleId             String?     @unique
+  id         String    @id @default(uuid())
+  full_name  String    @db.VarChar(191)
+  email      String?   @unique @db.VarChar(70)
+  phone      String?   @unique @db.VarChar(20)
+  birth_date DateTime?
+  password   String?   @db.VarChar(100)
+  lang       Language  @default(AR)
+  image_url  String?   @db.VarChar(191)
+  gender     Gender    @default(MALE)
+
+  last_login_at         String?   @db.VarChar(191)
+  password_last_updated DateTime?
+  login_type            LoginType @default(LOCAL)
+
+  is_confirmed Boolean? @default(true)
+  is_Active    Boolean? @default(true)
+
+  fcm_token String? @db.VarChar(191)
+  role_id   String
+  apple_id  String? @db.VarChar(191)
+
+  created_at DateTime? @default(now())
+  updated_at DateTime? @updatedAt
+  deleted_at DateTime?
 
   // Relations
   orders           Order[]
@@ -98,19 +97,47 @@ model User {
   wallet           Wallet?
   requestedRefunds Refund[]       @relation("RefundRequestedBy")
   reviewedRefunds  Refund[]       @relation("RefundReviewedBy")
+  role             UserRole       @relation(fields: [role_id], references: [id])
 
-  @@map("users")
+  @@map("user")
+}
+
+model UserRole {
+  id          String    @id @default(uuid())
+  name        String    @unique @db.VarChar(191)
+  description String?   @db.VarChar(191)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+  users       User[]
+
+  @@map("user_role")
+}
+
+model UserVerify {
+  id         Int      @id @default(autoincrement())
+  user_id    String
+  code       String   @unique
+  phone      String?
+  email      String?
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at DateTime @default(now())
+
+  @@index([user_id], map: "UserVerify_user_id_fkey")
+  @@map("user_verify")
 }
 
 model Wallet {
-  id            Int       @id @default(autoincrement())
-  points        Int       @default(0)
-  userId        String    @unique
-  lastCheckedAt DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  totalSpent    Float?    @default(0)
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              Int       @id @default(autoincrement())
+  points          Int       @default(0)
+  user_id         String    @unique
+  last_checked_at DateTime?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  total_spent     Float?    @default(0)
+  user            User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("wallet")
 }
 
 model UserAddress {
@@ -145,18 +172,6 @@ model UserAddress {
   updatedAt DateTime @updatedAt
 
   @@index([userId], map: "Address_userId_fkey")
-}
-
-model UserVerify {
-  id        Int      @id @default(autoincrement())
-  userId    String
-  code      String   @unique
-  phone     String?
-  createdAt DateTime @default(now())
-  email     String?
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId], map: "UserVerify_userId_fkey")
 }
 
 model Faqs {
@@ -393,32 +408,32 @@ model OrderItem {
 }
 
 model Refund {
-  id               Int             @id @default(autoincrement())
+  id               Int  @id @default(autoincrement())
   orderId          Int
   paymentAttemptId Int?
-  
-  amount           Float
-  currency         String          @default("EGP")
-  reason           String?
-  status           RefundStatus    @default(REQUESTED)
+
+  amount   Float
+  currency String       @default("EGP")
+  reason   String?
+  status   RefundStatus @default(REQUESTED)
 
   provider         String?
   providerRefundId String?
   rawResponse      Json?
-  
-  requestedById    String?
-  reviewedById     String?
-  reviewedAt       DateTime?
-  
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  
+
+  requestedById String?
+  reviewedById  String?
+  reviewedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  order            Order           @relation(fields: [orderId], references: [id])
-  paymentAttempt   PaymentAttempt? @relation(fields: [paymentAttemptId], references: [id])
-  requestedBy      User?           @relation("RefundRequestedBy", fields: [requestedById], references: [id])
-  reviewedBy       User?           @relation("RefundReviewedBy", fields: [reviewedById], references: [id])
-  items            RefundItem[]
+  order          Order           @relation(fields: [orderId], references: [id])
+  paymentAttempt PaymentAttempt? @relation(fields: [paymentAttemptId], references: [id])
+  requestedBy    User?           @relation("RefundRequestedBy", fields: [requestedById], references: [id])
+  reviewedBy     User?           @relation("RefundReviewedBy", fields: [reviewedById], references: [id])
+  items          RefundItem[]
 
   @@index([orderId])
   @@index([providerRefundId])

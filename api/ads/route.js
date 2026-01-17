@@ -86,11 +86,11 @@ export const adsSchema = (lang) => {
 };
 router
   .route("/")
-  .post(authorization, upload.single("imageUrl"), async (req, res) => {
+  .post(authorization(), upload.single("imageUrl"), async (req, res) => {
     const lang = langReq(req);
     try {
       const admin = req.user;
-      if (admin?.role !== "ADMIN") {
+      if (admin?.role !== "admin") {
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });

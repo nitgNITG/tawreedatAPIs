@@ -6,12 +6,12 @@ import FeatureApi from "../../../utils/FetchDataApis.js";
 
 const router = express.Router();
 
-router.route("/:id/orders").get(authorization, async (req, res) => {
+router.route("/:id/orders").get(authorization(), async (req, res) => {
   const lang = langReq(req);
   try {
     const user = req.user;
     const { id } = req.params;
-    const isAdmin = user.role === "ADMIN";
+    const isAdmin = user.role === "admin";
 
     if (!isAdmin && user.id !== id)
       return res.status(403).json({
@@ -30,11 +30,11 @@ router.route("/:id/orders").get(authorization, async (req, res) => {
       prisma.order.findMany(data),
       prisma.order.count({ where: data.where }),
       prisma.order.groupBy({
-      by: ["status"],
-      _sum: {
-        totalAmount: true,
-      },
-      where: data.where,
+        by: ["status"],
+        _sum: {
+          totalAmount: true,
+        },
+        where: data.where,
       }),
     ]);
     const totalPages = Math.ceil(totalCount / +data.take);

@@ -59,7 +59,7 @@ router
       });
     }
   })
-  .get(authorization, async (req, res) => {
+  .get(authorization(), async (req, res) => {
     const lang = langReq(req);
     try {
       const data = new FeatureApi(req)

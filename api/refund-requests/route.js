@@ -21,7 +21,7 @@ const router = express.Router();
 // Create a refund request
 router
   .route("/")
-  .post(authorization, async (req, res) => {
+  .post(authorization(), async (req, res) => {
     const lang = langReq(req);
     const user = req.user;
 
@@ -47,7 +47,7 @@ router
       }
 
       /* 3️⃣ Access control */
-      if (user.role !== "ADMIN" && order.customerId !== user.id) {
+      if (user.role !== "admin" && order.customerId !== user.id) {
         throw new AppError("forbidden", 403);
       }
       /* 4️⃣ Check order refundable */
@@ -114,7 +114,7 @@ router
           title: "notification_refund_requested_title",
           desc: "notification_refund_requested_desc",
         },
-        args: { title: [user.fullname], desc: [order.orderNumber] },
+        args: { title: [user.full_name], desc: [order.orderNumber] },
         lang,
         users: [],
         sendToAdmins: true,
@@ -132,7 +132,7 @@ router
       });
     }
   })
-  .get(authorization, async (req, res) => {
+  .get(authorization(), async (req, res) => {
     const lang = langReq(req);
     const user = req.user;
 
@@ -146,15 +146,15 @@ router
         .keyword(
           [
             "order.orderNumber",
-            "order.customer.fullname",
-            "reviewedBy.fullname",
+            "order.customer.full_name",
+            "reviewedBy.full_name",
           ],
           "OR"
         );
 
       // Admin can get all refunds, customer only their own
       const whereClause =
-        user.role === "ADMIN"
+        user.role === "admin"
           ? api.data.where || {}
           : { ...api.data.where, requestedById: user.id };
 
@@ -194,7 +194,7 @@ router.put("/:id", authorization, async (req, res) => {
   const { status } = req.body; // APPROVED | REJECTED
   const id = Number(req.params.id);
 
-  if (user.role !== "ADMIN")
+  if (user.role !== "admin")
     return res.status(403).json({ message: getTranslation(lang, "forbidden") });
 
   if (!["APPROVED", "REJECTED"].includes(status))

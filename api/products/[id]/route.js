@@ -44,13 +44,13 @@ router
       });
     }
   })
-  .put(authorization, upload.array("images", 5), async (req, res) => {
+  .put(authorization(), upload.array("images", 5), async (req, res) => {
     const lang = langReq(req);
     const { id } = req.params;
     try {
       const admin = req.user;
 
-      if (admin.role !== "ADMIN")
+      if (admin.role !== "admin")
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });
@@ -391,7 +391,7 @@ router
         args: {
           title: [],
           desc: [
-            admin.fullname,
+            admin.full_name,
             formattedProduct.name,
             formattedProduct.nameAr,
           ],
@@ -412,13 +412,13 @@ router
       });
     }
   })
-  .delete(authorization, async (req, res) => {
+  .delete(authorization(), async (req, res) => {
     const lang = langReq(req);
     const archived = req.query.archived || false;
     const { id } = req.params;
     try {
       const admin = req.user;
-      if (admin?.role != "ADMIN") {
+      if (admin?.role != "admin") {
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });

@@ -26,20 +26,33 @@ router.post("/verify", async (req, res) => {
     });
     const payload = ticket.getPayload();
     const email = payload.email;
-    const fullname = payload.name;
-    const imageUrl = payload.picture;
+    const full_name = payload.name;
+    const image_url = payload.picture;
+
+    console.log("payload", JSON.stringify(payload, null, 2));
 
     if (!email) {
       return res.status(400).json({ message: "Invalid Google token" });
     }
 
     // Check if user exists
-    let user = await prisma.user.findUnique({ where: { email } });
+    let user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        role: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    console.log("user exist", JSON.stringify(user, null, 2));
 
     if (!user) {
       //firebase authentication
       const firebaseUser = await auth.createUser({
-        displayName: fullname,
+        displayName: full_name,
         email,
         password: "123456",
       });
@@ -48,28 +61,44 @@ router.post("/verify", async (req, res) => {
         data: {
           id: firebaseUser.uid,
           email,
-          fullname,
-          imageUrl,
-          loginType: "GOOGLE",
+          full_name,
+          image_url,
+          login_type: "GOOGLE",
+          role: {
+            connect: {
+              name: "admin",
+            },
+          },
+        },
+        include: {
+          role: {
+            select: {
+              name: true,
+            },
+          },
         },
       });
+      console.log("user new", JSON.stringify(user, null, 2));
     }
 
     // Generate JWT
     const token = jwt.sign(
       {
         userId: user.id,
-        role: user.role,
+        role: user.role.name,
       },
-      process.env.SECRET_KEY,
-      { expiresIn: process.env.JWT_EXPIRY || "7d" }
+      process.env.SECRET_KEY
+      // { expiresIn: process.env.JWT_EXPIRY || "7d" }
     );
     console.log("Generated JWT:", token);
 
     res.status(200).json({
       message: "Login successful",
       token,
-      user,
+      user: {
+        ...user,
+        role: user.role.name,
+      },
     });
   } catch (error) {
     console.error("Google login error:", error);

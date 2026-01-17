@@ -69,8 +69,14 @@ router.post("/", async (req, res) => {
     const where = { [data.phone ? "phone" : "email"]: loginValue };
     const user = await prisma.user.findUnique({
       where,
+      include: {
+        role: {
+          select: {
+            name: true,
+          },
+        },
+      },
     });
-    console.log(user);
 
     // check if the user is already existing
     if (!user)
@@ -78,17 +84,17 @@ router.post("/", async (req, res) => {
         .status(400)
         .json({ message: getTranslation(lang, "user_not_found") });
 
-    if (user.isDeleted)
+    if (user.deleted_at)
       return res
         .status(400)
         .json({ message: getTranslation(lang, "user_not_found") });
 
-    if (!user.isActive)
+    if (!user.is_Active)
       return res
         .status(400)
         .json({ message: getTranslation(lang, "user_isBlocked") });
 
-    if (!user.password && user.loginType !== "LOCAL") {
+    if (!user.password && user.login_type !== "LOCAL") {
       return res.status(400).json({
         message: getTranslation(lang, "wrong_login_type"),
         loginType: user.loginType,
@@ -157,11 +163,11 @@ router.post("/", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { userId: user.id, role: user.role },
+      { userId: user.id, role: user?.role?.name },
       process.env.SECRET_KEY
     );
 
-    if (!user.isConfirmed)
+    if (!user.is_confirmed)
       return res
         .status(400)
         .json({ message: getTranslation(lang, "user_not_confirmed"), token });
@@ -192,7 +198,7 @@ router.post("/", async (req, res) => {
       user: {
         id: user.id,
         firebaseEmail: `${user.phone}@gmail.com`,
-        role: user.role,
+        role: user.role?.name,
       },
     });
   } catch (error) {

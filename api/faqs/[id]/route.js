@@ -25,12 +25,12 @@ router
       });
     }
   })
-  .put(authorization, async (req, res) => {
+  .put(authorization(), async (req, res) => {
     const lang = langReq(req);
     const id = +req.params.id;
     try {
       const user = req.user;
-      if (user.role !== "ADMIN") {
+      if (user.role !== "admin") {
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });
@@ -70,12 +70,12 @@ router
       });
     }
   })
-  .delete(authorization, async (req, res) => {
+  .delete(authorization(), async (req, res) => {
     const lang = langReq(req);
     const id = +req.params.id;
     try {
       const user = req.user;
-      if (user.role !== "ADMIN") {
+      if (user.role !== "admin") {
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });

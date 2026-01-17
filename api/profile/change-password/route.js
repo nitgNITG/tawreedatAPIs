@@ -22,7 +22,7 @@ const changePasswordSchema = (lang) => {
 };
 router.patch("/", authorization, async (req, res) => {
   const lang = langReq(req);
-  const isUser = req.user;
+  const user = req.user;
   try {
     const resultValidation = changePasswordSchema(lang).safeParse(req.body);
     if (!resultValidation.success) {
@@ -35,13 +35,8 @@ router.patch("/", authorization, async (req, res) => {
       });
     }
     const data = resultValidation.data;
-    const user = await prisma.user.findUnique({ where: { id: isUser.id } });
-    if (user.isDeleted) {
-      return res
-        .status(404)
-        .json({ message: getTranslation(lang, "user_not_found") });
-    }
-    if (!user.isConfirmed)
+
+    if (!user.is_confirmed)
       return res
         .status(400)
         .json({ message: getTranslation(lang, "user_not_confirmed") });
@@ -79,7 +74,7 @@ router.patch("/", authorization, async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(400).json({
+    res.status(500).json({
       message: getTranslation(lang, "internalError"),
       error: error.message,
     });

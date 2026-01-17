@@ -1,8 +1,8 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import prisma from "../../../prisma/client.js";
-import getTranslation, { langReq } from "../../../middleware/getTranslation.js";
 import * as jose from "jose";
+import { auth } from "../../../firebase/admin.js";
 
 const router = express.Router();
 
@@ -35,8 +35,7 @@ export const verifyAppleToken = async ({ idToken, clientId, nonce }) => {
 
 router.post("/verify", async (req, res) => {
   try {
-    const lang = langReq(req);
-    const { idToken, fullname } = req.body;
+    const { idToken, full_name } = req.body;
 
     if (!idToken) {
       return res.status(400).json({ message: "Missing Apple ID token" });
@@ -66,11 +65,18 @@ router.post("/verify", async (req, res) => {
     // Find or create user
     let user = await prisma.user.findUnique({
       where: { ...(email ? { email } : { appleId }) },
+      include: {
+        role: {
+          select: {
+            name: true,
+          },
+        },
+      },
     });
 
     if (!user) {
       const firebaseUser = await auth.createUser({
-        displayName: fullname || "Apple User",
+        displayName: full_name || "Apple User",
         email,
         password: "123456",
       });
@@ -79,9 +85,21 @@ router.post("/verify", async (req, res) => {
         data: {
           id: firebaseUser.uid,
           email,
-          fullname: fullname || "Apple User",
-          loginType: "APPLE",
-          appleId, // optional but recommended
+          full_name: full_name || "Apple User",
+          login_type: "APPLE",
+          appleId,
+          role: {
+            connect: {
+              name: "admin",
+            },
+          },
+        },
+        include: {
+          role: {
+            select: {
+              name: true,
+            },
+          },
         },
       });
     }
@@ -90,10 +108,10 @@ router.post("/verify", async (req, res) => {
     const token = jwt.sign(
       {
         userId: user.id,
-        role: user.role,
+        role: user.role.name,
       },
-      process.env.SECRET_KEY,
-      { expiresIn: process.env.JWT_EXPIRY || "7d" }
+      process.env.SECRET_KEY
+      // { expiresIn: process.env.JWT_EXPIRY || "7d" }
     );
 
     console.log("✅ Apple login successful for:", email);
@@ -101,7 +119,10 @@ router.post("/verify", async (req, res) => {
     res.status(200).json({
       message: "Login successful",
       token,
-      user,
+      user: {
+        ...user,
+        role: user.role.name,
+      },
     });
   } catch (error) {
     console.error("❌ Apple login error:", error);

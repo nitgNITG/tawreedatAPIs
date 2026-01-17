@@ -33,11 +33,11 @@ const router = express.Router();
 
 router
   .route("/")
-  .get(authorization, async (req, res) => {
+  .get(authorization(), async (req, res) => {
     const lang = langReq(req);
     const user = req.user;
     try {
-      if (user.role !== "ADMIN")
+      if (user.role !== "admin")
         return res
           .status(403)
           .json({ message: getTranslation(lang, "forbidden") });
@@ -48,7 +48,7 @@ router
         .sort()
         .skip()
         .limit(10)
-        .keyword(["customer.fullname", "orderNumber"], "OR").data;
+        .keyword(["customer.full_name", "orderNumber"], "OR").data;
 
       const orders = await prisma.order.findMany(data);
       const totalCount = await prisma.order.count({ where: data.where });
@@ -68,7 +68,7 @@ router
       });
     }
   })
-  .post(authorization, async (req, res) => {
+  .post(authorization(), async (req, res) => {
     const lang = langReq(req);
     const user = req.user;
     const resultValidation = orderCreateSchema.safeParse(req.body);
@@ -238,7 +238,7 @@ router
         },
         args: {
           title: [],
-          desc: [user.fullname, order.totalAmount],
+          desc: [user.full_name, order.totalAmount],
         },
         lang,
         users: [],

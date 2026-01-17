@@ -34,7 +34,9 @@ router
 
       const totalBrands = await prisma.brand.count({ where: data.where });
       const brands = await prisma.brand.findMany(data);
-      const totalPages = Math.ceil(totalBrands / (Number.parseInt(data.take) || 10));
+      const totalPages = Math.ceil(
+        totalBrands / (Number.parseInt(data.take) || 10)
+      );
 
       res.status(200).json({ brands, totalPages, totalBrands });
     } catch (error) {
@@ -46,13 +48,13 @@ router
     }
   })
   .post(
-    authorization,
+    authorization(),
     upload.fields([{ name: "logoUrl" }, { name: "coverUrl" }]),
     async (req, res) => {
       const lang = langReq(req);
       try {
         const admin = req.user;
-        if (admin?.role !== "ADMIN") {
+        if (admin?.role !== "admin") {
           return res
             .status(403)
             .json({ message: getTranslation(lang, "not_allowed") });
@@ -110,7 +112,7 @@ router
           },
           args: {
             title: [],
-            desc: [admin.fullname, brand.name, brand.nameAr],
+            desc: [admin.full_name, brand.name, brand.nameAr],
           },
           lang,
           users: [],
@@ -129,11 +131,11 @@ router
       }
     }
   )
-  .delete(authorization, async (req, res) => {
+  .delete(authorization(), async (req, res) => {
     const lang = langReq(req);
     try {
       const admin = req.user;
-      if (admin?.role !== "ADMIN") {
+      if (admin?.role !== "admin") {
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });

@@ -87,15 +87,15 @@ export const processPaymobPayment = async ({
         state: shipping.state || "N/A",
         postal_code: shipping.postalCode || "00000",
 
-        first_name: user?.fullname?.split(" ")[0] || "Customer",
-        last_name: user?.fullname?.split(" ")[1] || "",
+        first_name: user?.full_name?.split(" ")[0] || "Customer",
+        last_name: user?.full_name?.split(" ")[1] || "",
         phone_number: user?.phone || "+201000000000",
         country: "EG",
         email: user?.email || "customer@example.com",
       },
       customer: {
-        first_name: user?.fullname?.split(" ")[0] || "Customer",
-        last_name: user?.fullname?.split(" ")[1] || "",
+        first_name: user?.full_name?.split(" ")[0] || "Customer",
+        last_name: user?.full_name?.split(" ")[1] || "",
         email: user?.email || "customer@example.com",
         extras: {
           phone_number: user?.phone || "N/A",

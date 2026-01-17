@@ -36,18 +36,11 @@ export const formatNotificationsData = (notifications, lang) => {
   });
 };
 
-router.route("/delete-all").delete(authorization, async (req, res) => {
+router.route("/delete-all").delete(authorization(), async (req, res) => {
   const lang = langReq(req);
   try {
     const user = req.user;
-
-    if (!user) {
-      return res
-        .status(401)
-        .json({ message: getTranslation(lang, "unauthorized") });
-    }
-
-    const isAdmin = user.role === "ADMIN";
+    const isAdmin = user.role === "admin";
     let userId;
 
     if (isAdmin && req.query.userId) {
@@ -105,19 +98,13 @@ router.route("/delete-all").delete(authorization, async (req, res) => {
     });
   }
 });
-router.route("/download").post(authorization, async (req, res) => {
+router.route("/download").post(authorization(), async (req, res) => {
   try {
     const lang = langReq(req);
     const user = req.user;
     const { fileType } = await downloadSchema.parseAsync(req.body);
 
-    if (!user) {
-      return res
-        .status(401)
-        .json({ message: getTranslation(lang, "unauthorized") });
-    }
-
-    const isAdmin = user.role === "ADMIN";
+    const isAdmin = user.role === "admin";
     let userId;
 
     if (isAdmin) {
@@ -172,17 +159,12 @@ router.route("/download").post(authorization, async (req, res) => {
 });
 router
   .route("/:id")
-  .patch(authorization, async (req, res) => {
+  .patch(authorization(), async (req, res) => {
     const lang = langReq(req);
     const { id } = req.params;
 
     try {
       const user = req.user;
-      if (!user) {
-        return res
-          .status(401)
-          .json({ message: getTranslation(lang, "unauthorized") });
-      }
 
       const notificationDoc = await db
         .collection("Notifications")
@@ -195,7 +177,7 @@ router
       }
 
       const notification = transformNotificationData(notificationDoc);
-      const isAdmin = user.role === "ADMIN";
+      const isAdmin = user.role === "admin";
       if (!isAdmin && notification.userId !== user.id) {
         return res
           .status(403)
@@ -223,17 +205,12 @@ router
       });
     }
   })
-  .delete(authorization, async (req, res) => {
+  .delete(authorization(), async (req, res) => {
     const lang = langReq(req);
     const { id } = req.params;
 
     try {
       const user = req.user;
-      if (!user) {
-        return res
-          .status(401)
-          .json({ message: getTranslation(lang, "unauthorized") });
-      }
 
       const notificationDoc = await db
         .collection("Notifications")
@@ -246,7 +223,7 @@ router
       }
 
       const notification = transformNotificationData(notificationDoc);
-      const isAdmin = user.role === "ADMIN";
+      const isAdmin = user.role === "admin";
       if (!isAdmin && notification.userId !== user.id) {
         return res
           .status(403)
@@ -265,19 +242,13 @@ router
       });
     }
   });
-router.route("/:id/resend").post(authorization, async (req, res) => {
+router.route("/:id/resend").post(authorization(), async (req, res) => {
   const lang = langReq(req);
   const { id } = req.params;
 
   try {
     const user = req.user;
-    if (!user) {
-      return res
-        .status(401)
-        .json({ message: getTranslation(lang, "unauthorized") });
-    }
-
-    if (user.role !== "ADMIN") {
+    if (user.role !== "admin") {
       return res
         .status(403)
         .json({ message: getTranslation(lang, "forbidden") });
@@ -293,7 +264,7 @@ router.route("/:id/resend").post(authorization, async (req, res) => {
     const notification = transformNotificationData(notificationDoc);
     const targetUser = await prisma.user.findUnique({
       where: { id: notification.userId },
-      select: { id: true, fcmToken: true },
+      select: { id: true, fcm_token: true },
     });
 
     if (!targetUser) {
@@ -302,7 +273,7 @@ router.route("/:id/resend").post(authorization, async (req, res) => {
         .json({ message: getTranslation(lang, "user_not_found") });
     }
 
-    if (!targetUser.fcmToken) {
+    if (!targetUser.fcm_token) {
       return res
         .status(404)
         .json({ message: getTranslation(lang, "fcmToken_not_found") });
@@ -330,7 +301,7 @@ router.route("/:id/resend").post(authorization, async (req, res) => {
           title: notification.title,
           body: notification.desc,
         },
-        token: targetUser.fcmToken,
+        token: targetUser.fcm_token,
         data: {
           route: notification.route || "/",
         },
@@ -341,12 +312,12 @@ router.route("/:id/resend").post(authorization, async (req, res) => {
           "The registration token is not a valid FCM registration token" ||
         fcmError.code === "messaging/registration-token-not-registered"
       ) {
-        console.warn(`Invalid token detected: ${targetUser.fcmToken}`);
+        console.warn(`Invalid token detected: ${targetUser.fcm_token}`);
 
         // Update user's FCM token
         await prisma.user.update({
           where: { id: targetUser.id },
-          data: { fcmToken: null },
+          data: { fcm_token: null },
         });
 
         // Update notification delivered status

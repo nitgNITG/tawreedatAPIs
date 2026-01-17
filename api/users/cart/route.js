@@ -15,8 +15,8 @@ const cartItemCreateSchema = (lang) => {
       .string({ message: getTranslation(lang, "product_id_required") })
       .min(1, { message: getTranslation(lang, "product_id_required") }),
     quantity: z
-      .union([z.string().transform((val) => parseInt(val)), z.number()])
-      .refine((val) => !isNaN(val) && val > 0, {
+      .union([z.string().transform((val) => Number.parseInt(val)), z.number()])
+      .refine((val) => !Number.isNaN(val) && val > 0, {
         message: getTranslation(lang, "quantity_must_be_positive"),
       }),
   });
@@ -25,8 +25,8 @@ const cartItemCreateSchema = (lang) => {
 const cartItemUpdateSchema = (lang) => {
   return z.object({
     quantity: z
-      .union([z.string().transform((val) => parseInt(val)), z.number()])
-      .refine((val) => !isNaN(val) && val > 0, {
+      .union([z.string().transform((val) => Number.parseInt(val)), z.number()])
+      .refine((val) => !Number.isNaN(val) && val > 0, {
         message: getTranslation(lang, "quantity_must_be_positive"),
       }),
   });
@@ -34,7 +34,7 @@ const cartItemUpdateSchema = (lang) => {
 
 router
   .route("/")
-  .get(authorization, async (req, res) => {
+  .get(authorization(), async (req, res) => {
     const lang = langReq(req);
     try {
       const userId = req.user.id;
@@ -119,7 +119,7 @@ router
       });
     }
   })
-  .post(authorization, async (req, res) => {
+  .post(authorization(), async (req, res) => {
     const lang = langReq(req);
     try {
       const userId = req.user.id;
@@ -170,7 +170,7 @@ router
 
         const cartItem = await tx.cartItem.create({
           data: { userId, productId, quantity: finalQuantity },
-          ...(query ?? {}),
+          ...(query ?? []),
         });
 
         return { cartItem, hasWarning };
@@ -214,7 +214,7 @@ router
       });
     }
   })
-  .put(authorization, async (req, res) => {
+  .put(authorization(), async (req, res) => {
     const lang = langReq(req);
     try {
       const userId = req.user.id;
@@ -228,8 +228,11 @@ router
             message: getTranslation(lang, "invalid_action"),
           }),
           quantity: z
-            .union([z.string().transform((val) => parseInt(val)), z.number()])
-            .refine((val) => !isNaN(val) && val >= 0, {
+            .union([
+              z.string().transform((val) => Number.parseInt(val)),
+              z.number(),
+            ])
+            .refine((val) => !Number.isNaN(val) && val >= 0, {
               message: getTranslation(lang, "quantity_must_be_positive"),
             }),
         })
@@ -302,7 +305,7 @@ router
         const updatedItem = await tx.cartItem.update({
           where: { id: existingItem.id },
           data: { quantity: newQuantity },
-          ...(query ?? {}),
+          ...(query ?? []),
         });
 
         return { cartItem: updatedItem };
@@ -352,7 +355,7 @@ router
       });
     }
   })
-  .delete(authorization, async (req, res) => {
+  .delete(authorization(), async (req, res) => {
     const lang = langReq(req);
     try {
       const userId = req.user.id;

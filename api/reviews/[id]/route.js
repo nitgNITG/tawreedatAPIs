@@ -11,11 +11,11 @@ const router = express.Router();
 
 router
   .route("/:id")
-  .put(authorization, async (req, res) => {
+  .put(authorization(), async (req, res) => {
     const lang = langReq(req);
     const id = req.params.id;
     try {
-      const isAdmin = req.user.role === "ADMIN";
+      const isAdmin = req.user.role === "admin";
       const isReviewExist = await prisma.review.findUnique({
         where: { id },
       });
@@ -104,7 +104,7 @@ router
       });
     }
   })
-  .get(authorization, async (req, res) => {
+  .get(authorization(), async (req, res) => {
     const lang = langReq(req);
     const id = req.params.id;
     try {
@@ -119,7 +119,7 @@ router
           .json({ message: getTranslation(lang, "review_not_found") });
       }
       const user = req.user;
-      const isAdmin = req.user.role === "ADMIN";
+      const isAdmin = req.user.role === "admin";
       if (!isAdmin || user.id !== review.userId) {
         return res
           .status(403)
@@ -138,7 +138,7 @@ router
       });
     }
   })
-  .delete(authorization, async (req, res) => {
+  .delete(authorization(), async (req, res) => {
     const lang = langReq(req);
     const id = req.params.id;
     try {
@@ -150,7 +150,7 @@ router
           .status(404)
           .json({ message: getTranslation(lang, "review_not_found") });
       }
-      const isAdmin = req.user.role === "ADMIN";
+      const isAdmin = req.user.role === "admin";
       const user = req.user;
       if (!isAdmin || user.id !== isReviewExist.userId) {
         return res

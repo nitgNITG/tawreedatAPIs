@@ -119,9 +119,9 @@ const router = express.Router();
 
 router
   .route("/")
-  .get(authorization, async (req, res) => {
+  .get(authorization(), async (req, res) => {
     const lang = langReq(req);
-    const isAdmin = req.user.role === "ADMIN";
+    const isAdmin = req.user.role === "admin";
     try {
       if (!isAdmin)
         return res
@@ -148,11 +148,11 @@ router
       });
     }
   })
-  .put(authorization, async (req, res) => {
+  .put(authorization(), async (req, res) => {
     const lang = langReq(req);
     try {
       const admin = req.user;
-      if (admin?.role !== "ADMIN")
+      if (admin?.role !== "admin")
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_authorized") });

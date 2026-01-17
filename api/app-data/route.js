@@ -50,11 +50,11 @@ const aboutAppSchema = (lang) => {
 };
 router
   .route("/")
-  .put(authorization, async (req, res) => {
+  .put(authorization(), async (req, res) => {
     const lang = langReq(req);
     try {
       const admin = req.user;
-      if (admin?.role !== "ADMIN") {
+      if (admin?.role !== "admin") {
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_authorized") });

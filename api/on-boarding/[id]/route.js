@@ -12,12 +12,12 @@ const router = express.Router();
 
 router
   .route("/:id")
-  .put(authorization, upload.single("imageUrl"), async (req, res) => {
+  .put(authorization(), upload.single("imageUrl"), async (req, res) => {
     const lang = langReq(req);
     const id = +req.params.id;
     try {
       const admin = req.user;
-      if (!admin && admin.role !== "ADMIN") {
+      if (!admin && admin.role !== "admin") {
         return res
           .status(401)
           .json({ message: getTranslation(lang, "not_authorized") });
@@ -88,12 +88,12 @@ router
     }
   })
 
-  .delete(authorization, async (req, res) => {
+  .delete(authorization(), async (req, res) => {
     const lang = langReq(req);
     const id = +req.params.id;
     try {
       const admin = req.user;
-      if (!admin && admin.role !== "ADMIN") {
+      if (!admin && admin.role !== "admin") {
         return res
           .status(401)
           .json({ message: getTranslation(lang, "not_authorized") });

@@ -17,16 +17,16 @@ export const onBoardingSchema = (lang) => {
     subtitle: z.string().optional(),
     subtitleAr: z.string().optional(),
     content: z.string().optional(),
-    contentAr: z.string().optional()
+    contentAr: z.string().optional(),
   });
 };
 router
   .route("/")
-  .post(authorization, upload.single("imageUrl"), async (req, res) => {
+  .post(authorization(), upload.single("imageUrl"), async (req, res) => {
     const lang = langReq(req);
     try {
       const admin = req.user;
-      if (!admin && admin.role !== "ADMIN") {
+      if (!admin && admin.role !== "admin") {
         return res
           .status(401)
           .json({ message: getTranslation(lang, "not_authorized") });

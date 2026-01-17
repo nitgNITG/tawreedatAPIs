@@ -2,81 +2,122 @@ import jwt from "jsonwebtoken";
 import prisma from "../prisma/client.js";
 import getTranslation from "./getTranslation.js";
 
+const SESSION_DURATION_MINUTES = 60; // default session (no remember me)
+
 /**
- * Authorization middleware
- *
- * Validates JWT token, checks user existence, and ensures the token is
- * still valid after password changes.
- *
- * Attaches the authenticated user to `req.user`.
- *
- * @param {import("express").Request & { user?: import("@prisma/client").User }} req - Express request object
- * @param {import("express").Response} res - Express response object
- * @param {import("express").NextFunction} next - Express next middleware
+ * @param {{
+ *  includePassword?: boolean,
+ *  roles?: ("admin" | "customer" | "supplier")[]
+ * }} options
  */
+const authorization =
+  (options = {}) =>
+  async (req, res, next) => {
+    const lang = req.query.lang || "ar";
+    const {
+      includePassword = false,
+      roles = null, // 👈 null = allow all roles
+    } = options;
 
-const authorization = async (req, res, next) => {
-  const lang = req.query.lang || "ar";
+    try {
+      const authHeader = req.headers.authorization;
 
-  try {
-    if (
-      !req.headers.authorization &&
-      !req.headers?.authorization?.includes("Bearer ")
-    ) {
-      console.error("No token provided");
-      return res
-        .status(401)
-        .json({ message: getTranslation(lang, "provide_token") });
-    } else {
-      const token = req.headers.authorization.split(" ")[1];
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res
+          .status(401)
+          .json({ message: getTranslation(lang, "provide_token") });
+      }
+
+      const token = authHeader.split(" ")[1];
       const tokenParts = token?.split(".");
       if (tokenParts?.length !== 3) {
         return res
           .status(400)
           .json({ message: getTranslation(lang, "invalid_token_format") });
       }
-      const { userId, iat } = jwt.verify(token, process.env.SECRET_KEY);
+
+      let payload;
+      try {
+        payload = jwt.verify(token, process.env.SECRET_KEY);
+      } catch {
+        return res
+          .status(401)
+          .json({ message: getTranslation(lang, "invalid_token_format") });
+      }
+      const { userId, iat } = payload;
 
       const user = await prisma.user.findUnique({
-        where: { id: `${userId}` },
+        where: { id: userId },
+        include: {
+          role: {
+            select: {
+              name: true,
+            },
+          },
+        },
       });
 
-      if (!user) {
-        console.error("User not found");
-        return res.status(401).json({
-          success: false,
-          message: getTranslation(lang, "user_not_found"),
-        });
-      }
-      const timeChangedPassword = Number.parseInt(
-        user.passwordLastUpdated.getTime() / 1000,
-        10
-      );
-      if (timeChangedPassword > iat) {
-        console.error("Password has been changed");
-        return res.status(401).json({
-          message: getTranslation(lang, "password_has_been_changed"),
-          success: false,
-        });
+      if (!user || user.deleted_at) {
+        return res
+          .status(401)
+          .json({ message: getTranslation(lang, "user_not_found") });
       }
 
-      delete user.password;
-      delete user.passwordLastUpdated;
-      delete user.lastLoginAt;
-      delete user.updatedAt;
-      delete user.createdAt;
-      req.user = user;
+      // if (!user.is_Active) {
+      //   return res
+      //     .status(403)
+      //     .json({ message: getTranslation(lang, "user_isBlocked") });
+      // }
+
+      // 🔐 Password change invalidates token
+      if (user.password_last_updated) {
+        const passwordUpdatedAt = Math.floor(
+          new Date(user.password_last_updated).getTime() / 1000
+        );
+
+        if (passwordUpdatedAt > iat) {
+          return res.status(401).json({
+            message: getTranslation(lang, "password_has_been_changed"),
+          });
+        }
+      }
+
+      // // ⏳ Session expiration using last_login_at
+      // if (user.last_login_at) {
+      //   const lastLogin = new Date(user.last_login_at).getTime();
+      //   const expiresAt = lastLogin + SESSION_DURATION_MINUTES * 60 * 1000;
+
+      //   if (Date.now() > expiresAt) {
+      //     return res.status(401).json({
+      //       message: getTranslation(lang, "session_expired"),
+      //     });
+      //   }
+      // }
+      const roleName = user.role?.name;
+
+      if (Array.isArray(roles) && roles.length > 0) {
+        if (!roles.includes(roleName)) {
+          return res.status(403).json({
+            message: getTranslation(lang, "not_authorized"),
+          });
+        }
+      }
+
+      if (!includePassword) delete user.password;
+
+      // attach safe user object
+      req.user = {
+        ...user,
+        role: roleName,
+      };
+
       next();
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({
+        message: getTranslation(lang, "not_authorized"),
+      });
     }
-  } catch (error) {
-    console.log(error);
-
-    return res.status(500).json({
-      success: false,
-      message: getTranslation(lang, "not_authorized"),
-      error: error.message,
-    });
-  }
-};
+  };
 
 export default authorization;

@@ -5,11 +5,11 @@ import { langReq } from "../../middleware/getTranslation.js";
 
 const router = express.Router();
 
-router.get("/", authorization, async (req, res) => {
+router.get("/", authorization(), async (req, res) => {
   const lang = langReq(req);
   try {
     const user = req.user;
-    if (user.role !== "ADMIN") {
+    if (user.role !== "admin") {
       return res
         .status(403)
         .json({ message: getTranslation(lang, "not_allowed") });

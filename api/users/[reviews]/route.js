@@ -7,12 +7,12 @@ import { parseProductImages } from "../../../utils/productImages.js";
 
 const router = express.Router();
 
-router.route("/:id/reviews").get(authorization, async (req, res) => {
+router.route("/:id/reviews").get(authorization(), async (req, res) => {
   const lang = langReq(req);
   try {
     const user = req.user;
     const { id } = req.params;
-    const isAdmin = user.role === "ADMIN";
+    const isAdmin = user.role === "admin";
 
     if (!isAdmin && user.id !== id)
       return res.status(403).json({
@@ -35,13 +35,13 @@ router.route("/:id/reviews").get(authorization, async (req, res) => {
       prisma.review.count({ where: data.where }),
     ]);
     const totalPages = Math.ceil(totalCount / +data.take);
-    let formatReviews = reviews;    
+    let formatReviews = reviews;
     if (data.select?.product?.select?.images) {
       formatReviews = reviews.map((review) => ({
         ...review,
         product: parseProductImages(review?.product),
       }));
-    }    
+    }
     return res.status(200).json({
       reviews: formatReviews,
       totalPages,

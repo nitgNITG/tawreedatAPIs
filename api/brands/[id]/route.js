@@ -44,7 +44,7 @@ router
     }
   })
   .put(
-    authorization,
+    authorization(),
     upload.fields([{ name: "logoUrl" }, { name: "coverUrl" }]),
     async (req, res) => {
       const lang = langReq(req);
@@ -58,7 +58,7 @@ router
 
       try {
         const admin = req.user;
-        if (admin?.role !== "ADMIN") {
+        if (admin?.role !== "admin") {
           return res
             .status(403)
             .json({ message: getTranslation(lang, "not_allowed") });
@@ -181,7 +181,7 @@ router
           },
           args: {
             title: [],
-            desc: [admin.fullname, updatedBrand?.name, updatedBrand?.nameAr],
+            desc: [admin.full_name, updatedBrand?.name, updatedBrand?.nameAr],
           },
           lang,
           users: [],
@@ -200,7 +200,7 @@ router
       }
     }
   )
-  .delete(authorization, async (req, res) => {
+  .delete(authorization(), async (req, res) => {
     const lang = langReq(req);
     const id = Number.parseInt(req.params.id);
 
@@ -212,7 +212,7 @@ router
 
     try {
       const admin = req.user;
-      if (admin?.role !== "ADMIN") {
+      if (admin?.role !== "admin") {
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });

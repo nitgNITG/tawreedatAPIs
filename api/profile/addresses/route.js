@@ -39,7 +39,7 @@ const router = express.Router();
 
 router
   .route("/")
-  .get(authorization, async (req, res) => {
+  .get(authorization(), async (req, res) => {
     const lang = langReq(req);
     try {
       const userId = req.user.id;
@@ -57,7 +57,7 @@ router
       });
     }
   })
-  .post(authorization, async (req, res) => {
+  .post(authorization(), async (req, res) => {
     const lang = langReq(req);
 
     try {
@@ -110,7 +110,7 @@ router
 
 router
   .route("/:addressId")
-  .get(authorization, async (req, res) => {
+  .get(authorization(), async (req, res) => {
     const lang = langReq(req);
     const addressId = +req.params.addressId;
     try {
@@ -137,7 +137,7 @@ router
       });
     }
   })
-  .put(authorization, async (req, res) => {
+  .put(authorization(), async (req, res) => {
     const lang = langReq(req);
     const addressId = +req.params.addressId;
 
@@ -190,7 +190,7 @@ router
       });
     }
   })
-  .delete(authorization, async (req, res) => {
+  .delete(authorization(), async (req, res) => {
     const lang = langReq(req);
     const addressId = +req.params.addressId;
     try {

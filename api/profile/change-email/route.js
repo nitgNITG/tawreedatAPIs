@@ -13,16 +13,10 @@ export const userSchema = (lang) => {
 
 const router = express.Router();
 
-router.route("/").patch(authorization, async (req, res) => {
+router.route("/").patch(authorization(), async (req, res) => {
   const lang = langReq(req);
   try {
     const user = req.user;
-    if (!user) {
-      return res
-        .status(403)
-        .json({ message: getTranslation(lang, "not_allowed") });
-    }
-
     const id = user.id;
 
     const resultValidation = userSchema(lang).safeParse(req.body);
@@ -46,7 +40,7 @@ router.route("/").patch(authorization, async (req, res) => {
     const existingUser = await prisma.user.findUnique({
       where: { email: data.email, NOT: { id } },
     });
-    if (existingUser && existingUser.id !== id) {
+    if (existingUser) {
       return res.status(400).json({
         message: getTranslation(lang, "email_in_use"),
       });
@@ -70,7 +64,7 @@ router.route("/").patch(authorization, async (req, res) => {
     // res.status(200).json({ message: getTranslation(lang, "check_email") });
   } catch (error) {
     console.error(error);
-    res.status(400).json({
+    res.status(500).json({
       message: getTranslation(lang, "internalError"),
       error: error.message,
     });

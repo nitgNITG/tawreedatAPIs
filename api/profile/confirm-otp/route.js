@@ -18,16 +18,10 @@ export const userSchema = (lang) => {
 
 const router = express.Router();
 
-router.route("/").post(authorization, async (req, res) => {
+router.route("/").post(authorization(), async (req, res) => {
   const lang = langReq(req);
   try {
     const user = req.user;
-    if (!user) {
-      return res
-        .status(403)
-        .json({ message: getTranslation(lang, "not_allowed") });
-    }
-
     const id = user.id;
 
     const resultValidation = userSchema(lang).safeParse(req.body);
@@ -44,7 +38,7 @@ router.route("/").post(authorization, async (req, res) => {
 
     const otp = await prisma.userVerify.findFirst({
       where: {
-        userId: id,
+        user_id: id,
         code: data.code,
       },
     });
@@ -55,7 +49,7 @@ router.route("/").post(authorization, async (req, res) => {
       });
     }
 
-    if (otp && isExpired(otp?.createdAt, 10)) {
+    if (otp && isExpired(otp?.created_at, 10)) {
       await prisma.userVerify.delete({
         where: {
           id: otp.id,
@@ -92,7 +86,7 @@ router.route("/").post(authorization, async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(400).json({
+    res.status(500).json({
       message: getTranslation(lang, "internalError"),
       error: error.message,
     });

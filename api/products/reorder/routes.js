@@ -24,7 +24,7 @@ router.post("/", authorization, async (req, res) => {
 
   try {
     const admin = req.user;
-    if (admin?.role !== "ADMIN") {
+    if (admin?.role !== "admin") {
       return res.status(403).json({
         message: getTranslation(lang, "not_allowed"),
       });
@@ -55,7 +55,7 @@ router.post("/", authorization, async (req, res) => {
       .map((product) => `WHEN '${product.id}' THEN ${product.sortId}`)
       .join(" ");
     const idsSql = products.map((product) => `'${product.id}'`).join(",");
-    
+
     const rawQuery = `
     UPDATE products
     SET sortId = CASE id

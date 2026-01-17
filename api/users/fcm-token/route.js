@@ -21,7 +21,7 @@ router.post("/", authorization, async (req, res) => {
         id: user.id,
       },
       data: {
-        fcmToken,
+        fcm_token: fcmToken,
       },
     });
 
@@ -79,7 +79,7 @@ router.post("/", authorization, async (req, res) => {
             ) {
               await prisma.user.update({
                 where: { id: user.id },
-                data: { fcmToken: null },
+                data: { fcm_token: null },
               });
               console.log(`Removed invalid FCM token for user ${user.id}`);
               return false;
@@ -103,7 +103,7 @@ router.post("/", authorization, async (req, res) => {
     }
   } catch (error) {
     console.error(error);
-    res.status(400).json({
+    res.status(500).json({
       message: getTranslation(lang, "internalError"),
       error: error.message,
     });

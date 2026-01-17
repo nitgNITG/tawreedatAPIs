@@ -27,12 +27,12 @@ const pushNotification = async ({
             createdAt: new Date(Date.now()),
             read: false,
             data,
-            delivered: !!user.fcmToken,
+            delivered: !!user.fcm_token,
           });
 
           data.notificationId = notificationRef.id;
 
-          if (user.fcmToken) {
+          if (user.fcm_token) {
             try {
               await admin.messaging().send({
                 notification: {
@@ -47,7 +47,7 @@ const pushNotification = async ({
                     args?.desc
                   ),
                 },
-                token: user.fcmToken,
+                token: user.fcm_token,
                 data,
               });
             } catch (error) {
@@ -56,12 +56,12 @@ const pushNotification = async ({
                   "The registration token is not a valid FCM registration token" ||
                 error.code === "messaging/registration-token-not-registered"
               ) {
-                console.warn(`Invalid token detected: ${user.fcmToken}`);
+                console.warn(`Invalid token detected: ${user.fcm_token}`);
 
                 // Remove the invalid token from the database
                 await prisma.user.update({
                   where: { id: user.id },
-                  data: { fcmToken: null },
+                  data: { fcm_token: null },
                 });
                 await notificationRef.update({ delivered: false });
               } else {
@@ -81,7 +81,7 @@ const pushNotification = async ({
 
       // If adminUserId is provided and not already in userIds, add it to the admin list
       const where = {
-        role: { equals: "ADMIN" },
+        role: { name: "admin" },
         id: {
           notIn: userIds,
         },
@@ -91,14 +91,14 @@ const pushNotification = async ({
         where,
         select: {
           id: true,
-          fcmToken: true,
+          fcm_token: true,
           lang: true,
         },
       });
 
       // Send notifications to admins
       await Promise.all(
-        admins.map(async (user) => {          
+        admins.map(async (user) => {
           const notificationRef = await db.collection("Notifications").add({
             userId: user.id,
             title: getTranslation("en", key?.title, args?.title),
@@ -108,13 +108,13 @@ const pushNotification = async ({
             createdAt: new Date(Date.now()),
             read: false,
             data,
-            delivered: !!user.fcmToken,
+            delivered: !!user.fcm_token,
           });
 
           data.notificationId = notificationRef.id;
 
           // Send notification to admin
-          if (user.fcmToken) {
+          if (user.fcm_token) {
             const title = getTranslation(
               user.lang === "EN" ? "en" : "ar",
               key?.title,
@@ -133,7 +133,7 @@ const pushNotification = async ({
                   body,
                 },
                 data,
-                token: user.fcmToken,
+                token: user.fcm_token,
               });
             } catch (error) {
               if (
@@ -141,12 +141,12 @@ const pushNotification = async ({
                   "The registration token is not a valid FCM registration token" ||
                 error.code === "messaging/registration-token-not-registered"
               ) {
-                console.warn(`Invalid admin token detected: ${user.fcmToken}`);
+                console.warn(`Invalid admin token detected: ${user.fcm_token}`);
 
                 // Remove the invalid token from the database
                 await prisma.user.update({
                   where: { id: user.id },
-                  data: { fcmToken: null },
+                  data: { fcm_token: null },
                 });
                 await notificationRef.update({ delivered: false });
               } else {

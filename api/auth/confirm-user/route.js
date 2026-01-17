@@ -14,7 +14,7 @@ const confirmUserSchema = (lang) => {
   });
 };
 const router = express.Router();
-router.post("/", authorization, async (req, res) => {
+router.post("/", authorization(), async (req, res) => {
   const lang = langReq(req);
   try {
     const user = req.user;
@@ -41,7 +41,7 @@ router.post("/", authorization, async (req, res) => {
         isConfirmed: false,
       });
     }
-    if (isExpired(isCode.createdAt, 5)) {
+    if (isExpired(isCode.created_at, 5)) {
       await prisma.userVerify.deleteMany({
         where: {
           phone: user.phone,
@@ -63,7 +63,7 @@ router.post("/", authorization, async (req, res) => {
         id: user.id,
       },
       data: {
-        isConfirmed: true,
+        is_confirmed: true,
       },
     });
     return res

@@ -74,12 +74,12 @@ export const getNotificationsData = async ({
   return notifications;
 };
 
-router.route("/").get(authorization, async (req, res) => {
+router.route("/").get(authorization(), async (req, res) => {
   const lang = langReq(req);
   try {
     const user = req.user;
 
-    const isAdmin = user.role === "ADMIN";
+    const isAdmin = user.role === "admin";
     let userId;
 
     if (isAdmin) {
@@ -162,7 +162,7 @@ router.route("/").get(authorization, async (req, res) => {
   }
 });
 
-router.route("/send-notification").post(authorization, async (req, res) => {
+router.route("/send-notification").post(authorization(), async (req, res) => {
   const lang = langReq(req);
   try {
     const user = req.user;
@@ -172,7 +172,7 @@ router.route("/send-notification").post(authorization, async (req, res) => {
         .status(400)
         .json({ message: getTranslation(lang, "missingFields") });
     }
-    if (user.role !== "ADMIN") {
+    if (user.role !== "admin") {
       return res
         .status(401)
         .json({ message: getTranslation(lang, "unauthorized") });
@@ -181,27 +181,27 @@ router.route("/send-notification").post(authorization, async (req, res) => {
     // get the total
     const totalUsers = await prisma.user.count({
       where: {
-        fcmToken: {
+        fcm_token: {
           not: null,
         },
         role: {
-          equals: "CUSTOMER",
+          name: "customer",
         },
       },
     });
 
     const users = await prisma.user.findMany({
       where: {
-        fcmToken: {
+        fcm_token: {
           not: null,
         },
         role: {
-          equals: "CUSTOMER",
+          name: "customer",
         },
       },
       select: {
         id: true,
-        fcmToken: true,
+        fcm_token: true,
         lang: true,
       },
     });

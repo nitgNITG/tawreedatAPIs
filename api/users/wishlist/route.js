@@ -19,7 +19,7 @@ const wishlistItemSchema = (lang) => {
 
 router
   .route("/")
-  .get(authorization, async (req, res) => {
+  .get(authorization(), async (req, res) => {
     const lang = langReq(req);
     try {
       const userId = req.user.id;
@@ -46,13 +46,13 @@ router
       });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
     }
   })
-  .post(authorization, async (req, res) => {
+  .post(authorization(), async (req, res) => {
     const lang = langReq(req);
     try {
       const userId = req.user.id;
@@ -102,7 +102,7 @@ router
       // Add item to wishlist
       const wishlistItem = await prisma.wishlistItem.create({
         data: { userId, productId },
-        ...(query ?? {}),
+        ...(query ?? []),
       });
       let formattedWishlistItem = wishlistItem;
       if (wishlistItem?.product) {
@@ -118,13 +118,13 @@ router
       });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
     }
   })
-  .delete(authorization, async (req, res) => {
+  .delete(authorization(), async (req, res) => {
     const lang = langReq(req);
     try {
       const userId = req.user.id;
@@ -138,7 +138,7 @@ router
       });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });

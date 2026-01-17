@@ -9,11 +9,11 @@ const router = express.Router();
 
 router
   .route("/")
-  .post(authorization, async (req, res) => {
+  .post(authorization(), async (req, res) => {
     const lang = langReq(req);
     try {
       const userId = req.user.id;
-      const isAdmin = req.user.role === "ADMIN";
+      const isAdmin = req.user.role === "admin";
 
       const resultValidation = reviewSchema(lang, isAdmin).safeParse(req.body);
       if (!resultValidation.success) {
@@ -53,10 +53,10 @@ router
       });
     }
   })
-  .get(authorization, async (req, res) => {
+  .get(authorization(), async (req, res) => {
     const lang = langReq(req);
     try {
-      const isAdmin = req.user.role === "ADMIN";
+      const isAdmin = req.user.role === "admin";
       if (!isAdmin) {
         return res
           .status(403)
@@ -71,7 +71,7 @@ router
         .limit(10)
         .keyword(
           [
-            "user.fullname",
+            "user.full_name",
             "user.email",
             "user.phone",
             "product.name",

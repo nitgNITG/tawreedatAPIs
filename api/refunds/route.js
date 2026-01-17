@@ -20,7 +20,7 @@ router.post("/", authorization, async (req, res) => {
   const lang = langReq(req);
   const user = req.user;
 
-  if (user.role !== "ADMIN")
+  if (user.role !== "admin")
     return res.status(403).json({ message: getTranslation(lang, "forbidden") });
 
   try {

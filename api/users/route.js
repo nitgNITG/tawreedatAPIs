@@ -10,9 +10,16 @@ import upload from "../../middleware/upload.js";
 import uploadImage from "../../utils/uploadImage.js";
 import { auth } from "../../firebase/admin.js";
 
-export const userSchema = (lang) => {
+const userSchema = async (lang) => {
+  const roles = await prisma.userRole.findMany({
+    select: {
+      id: true,
+    },
+  });
+  const roleIds = roles.map((r) => r.id);
+
   return z.object({
-    fullname: z
+    full_name: z
       .string({ message: getTranslation(lang, "name_required") })
       .min(1, { message: getTranslation(lang, "name_required") })
       .max(100, { message: getTranslation(lang, "name_too_long") }),
@@ -24,7 +31,7 @@ export const userSchema = (lang) => {
           return false;
         }
       },
-      { message: getTranslation(lang, "invalid_phone") }
+      { message: getTranslation(lang, "invalid_phone") },
     ),
     email: z
       .email({ message: getTranslation(lang, "invalid_email") })
@@ -38,7 +45,7 @@ export const userSchema = (lang) => {
         message: getTranslation(lang, "invalid_gender"),
       })
       .optional(),
-    isActive: z
+    is_active: z
       .union([
         z.string().transform((checkString) => checkString === "true"),
         z.boolean(),
@@ -49,29 +56,31 @@ export const userSchema = (lang) => {
         message: getTranslation(lang, "invalid_language"),
       })
       .optional(),
-    birthDate: z
+    birth_date: z
       .union([z.string(), z.date()], {
         message: getTranslation(lang, "invalid_birthDate"),
       })
       .transform((el) => new Date(el))
       .optional(),
-    isConfirmed: z
+    is_confirmed: z
       .union([
         z.string().transform((checkString) => checkString === "true"),
         z.boolean(),
       ])
       .optional(),
-    role: z
-      .enum(["CUSTOMER", "ADMIN", "MANAGER"], {
+    role_id: z
+      .enum(roleIds, {
         message: getTranslation(lang, "invalid_role"),
       })
       .optional(),
-    isDeleted: z
+    deleted_at: z
       .union([
-        z.string().transform((checkString) => checkString === "true"),
-        z.boolean(),
+        z.string().transform((s) => new Date(s)), // transform string to Date
+        z.date(), // accept actual Date objects
       ])
+      .nullable()
       .optional(),
+
     deleteImage: z
       .union([
         z.string().transform((checkString) => checkString === "true"),
@@ -106,99 +115,103 @@ const deleteUsersSchema = (lang) => {
 const router = express.Router();
 router
   .route("/")
-  .post(authorization, upload.single("imageUrl"), async (req, res) => {
-    const lang = langReq(req);
-    try {
-      const admin = req.user;
-      if (admin?.role !== "ADMIN") {
-        return res
-          .status(403)
-          .json({ message: getTranslation(lang, "not_allowed") });
-      }
+  .post(
+    authorization({ roles: ["admin"] }),
+    upload.single("image_url"),
+    async (req, res) => {
+      const lang = langReq(req);
+      try {
+        const lang = langReq(req);
 
-      const resultValidation = userSchema(lang).safeParse(req.body);
+        const schema = await userSchema(lang);
+        const resultValidation = schema.safeParse(req.body);
 
-      if (!resultValidation.success) {
-        return res.status(400).json({
-          message: resultValidation.error.issues[0].message,
-          errors: resultValidation.error.issues.map((issue) => ({
-            path: issue.path,
-            message: issue.message,
-          })),
+        if (!resultValidation.success) {
+          return res.status(400).json({
+            message: resultValidation.error.issues[0].message,
+            errors: resultValidation.error.issues.map((issue) => ({
+              path: issue.path,
+              message: issue.message,
+            })),
+          });
+        }
+
+        const data = resultValidation.data;
+        const isPhone = await prisma.user.findUnique({
+          where: { phone: data.phone },
         });
-      }
-      const data = resultValidation.data;
-      const isPhone = await prisma.user.findUnique({
-        where: { phone: data.phone },
-      });
-      if (isPhone)
-        return res
-          .status(400)
-          .json({ message: getTranslation(lang, "phone_already_used") });
-      if (data.email) {
-        const isEmail = await prisma.user.findUnique({
-          where: { email: data.email },
-        });
-        if (isEmail)
+        if (isPhone)
           return res
             .status(400)
-            .json({ message: getTranslation(lang, "email_already_used") });
+            .json({ message: getTranslation(lang, "phone_already_used") });
+        if (data.email) {
+          const isEmail = await prisma.user.findUnique({
+            where: { email: data.email },
+          });
+          if (isEmail)
+            return res
+              .status(400)
+              .json({ message: getTranslation(lang, "email_already_used") });
+        }
+        const firebaseUser = await auth.createUser({
+          displayName: data.full_name,
+          email: `${data.phone}@gmail.com`,
+          password: data.password,
+        });
+
+        const hashPassword = await bcrypt.hash(data.password, 10);
+
+        let image_url = null;
+        if (req.file)
+          image_url = await uploadImage(req.file, `/users/${Date.now()}`);
+        const user = await prisma.user.create({
+          data: {
+            id: firebaseUser.uid,
+            ...data,
+            password: hashPassword,
+            image_url,
+          },
+          include: {
+            role: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        });
+
+        const formattedUser = { ...user };
+
+        delete formattedUser.password;
+        res.status(201).json({
+          message: getTranslation(lang, "user_created_successfully"),
+          user: { ...formattedUser },
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({
+          message: getTranslation(lang, "internalError"),
+          error: error.message,
+        });
       }
-      const firebaseUser = await auth.createUser({
-        displayName: data.fullname,
-        email: `${data.phone}@gmail.com`,
-        password: data.password,
-      });
+    },
+  )
 
-      const hashPassword = await bcrypt.hash(data.password, 10);
-
-      let imageUrl = null;
-      if (req.file)
-        imageUrl = await uploadImage(req.file, `/users/${Date.now()}`);
-      const user = await prisma.user.create({
-        data: {
-          id: firebaseUser.uid,
-          ...data,
-          password: hashPassword,
-          imageUrl,
-        },
-      });
-
-      const formattedUser = { ...user };
-
-      delete formattedUser.password;
-      res.status(201).json({
-        message: getTranslation(lang, "user_created_successfully"),
-        user: { ...formattedUser },
-      });
-    } catch (error) {
-      console.error(error);
-      res.status(400).json({
-        message: getTranslation(lang, "internalError"),
-        error: error.message,
-      });
-    }
-  })
-
-  .get(authorization, async (req, res) => {
+  .get(authorization({ roles: ["admin"] }), async (req, res) => {
     const lang = langReq(req);
     try {
-      const admin = req.user;
-      if (admin.role !== "ADMIN")
-        return res
-          .status(403)
-          .json({ message: getTranslation(lang, "not_allowed") });
-
       const data = new FeatureApi(req)
         .fields()
         .filter()
         .skip()
         .sort()
         .limit(10)
-        .keyword(["fullname", "phone"], "OR").data;
+        .keyword(["full_name", "phone", "email"], "OR").data;
 
       const totalUsers = await prisma.user.count({ where: data.where });
-      const totalPages = Math.ceil(totalUsers / (parseInt(data.take) || 10));
+      const totalPages = Math.ceil(
+        totalUsers / (Number.parseInt(data.take) || 10),
+      );
 
       const users = await prisma.user.findMany(data);
 
@@ -209,21 +222,15 @@ router
       });
     } catch (error) {
       console.error(error.message);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
     }
   })
-  .delete(authorization, async (req, res) => {
+  .delete(authorization({ roles: ["admin"] }), async (req, res) => {
     const lang = langReq(req);
     try {
-      const admin = req.user;
-      if (admin.role !== "ADMIN")
-        return res
-          .status(403)
-          .json({ message: getTranslation(lang, "not_allowed") });
-
       const resultValidation = deleteUsersSchema(lang).safeParse(req.body);
       if (!resultValidation.success) {
         return res.status(400).json({
@@ -240,7 +247,14 @@ router
       // Define deletion strategies
       const deletionStrategies = {
         isDeleted: {
-          action: () => prisma.user.deleteMany({ where: { isDeleted: true } }),
+          action: () =>
+            prisma.user.deleteMany({
+              where: {
+                deleted_at: {
+                  not: null,
+                },
+              },
+            }),
           message: "deleted_all_users",
         },
         notConfirmed: {
@@ -257,7 +271,7 @@ router
             if (data.archived) {
               return prisma.user.updateMany({
                 where: { id: { in: data.ids } },
-                data: { isDeleted: true },
+                data: { deleted_at: new Date() },
               });
             } else {
               return prisma.user.deleteMany({
@@ -291,7 +305,7 @@ router
       });
     } catch (error) {
       console.error(error.message);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });

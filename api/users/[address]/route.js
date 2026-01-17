@@ -37,13 +37,13 @@ const router = express.Router();
 // GET all addresses
 router
   .route("/:id/addresses")
-  .get(authorization, async (req, res) => {
+  .get(authorization(), async (req, res) => {
     const lang = langReq(req);
     const { id } = req.params;
 
     try {
       const user = req.user;
-      if (user?.role !== "ADMIN") {
+      if (user?.role !== "admin") {
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });
@@ -70,13 +70,13 @@ router
       });
     }
   })
-  .post(authorization, async (req, res) => {
+  .post(authorization(), async (req, res) => {
     const lang = langReq(req);
     const { id: userId } = req.params;
 
     try {
       const user = req.user;
-      if (user.role !== "ADMIN") {
+      if (user.role !== "admin") {
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });
@@ -132,14 +132,14 @@ router
 // GET, PUT, DELETE single address
 router
   .route("/:id/addresses/:addressId")
-  .get(authorization, async (req, res) => {
+  .get(authorization(), async (req, res) => {
     const lang = langReq(req);
     const userId = req.params.id;
     const addressId = +req.params.addressId;
 
     try {
       const user = req.user;
-      if (user?.role !== "ADMIN") {
+      if (user?.role !== "admin") {
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });
@@ -174,14 +174,14 @@ router
       });
     }
   })
-  .put(authorization, async (req, res) => {
+  .put(authorization(), async (req, res) => {
     const lang = langReq(req);
     const userId = req.params.id;
     const addressId = +req.params.addressId;
 
     try {
       const user = req.user;
-      if (user.role !== "ADMIN") {
+      if (user.role !== "admin") {
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });
@@ -236,14 +236,14 @@ router
       });
     }
   })
-  .delete(authorization, async (req, res) => {
+  .delete(authorization(), async (req, res) => {
     const lang = langReq(req);
     const userId = req.params.id;
     const addressId = +req.params.addressId;
 
     try {
       const user = req.user;
-      if (user?.role !== "ADMIN") {
+      if (user?.role !== "admin") {
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });

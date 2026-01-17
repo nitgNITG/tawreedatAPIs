@@ -12,15 +12,13 @@ const router = express.Router();
 
 const userSchema = (lang) => {
   return z.object({
-    fullname: z
+    full_name: z
       .string({ message: getTranslation(lang, "name_required") })
       .min(1, { message: getTranslation(lang, "name_required") })
       .max(100, { message: getTranslation(lang, "name_too_long") }),
     phone: z.string({ message: getTranslation(lang, "invalid_phone") }).refine(
       (phone) => {
         const phoneNumber = parsePhoneNumber(phone);
-        console.log(phoneNumber.country);
-
         if (
           (phoneNumber.country === "EG" || phoneNumber.country === "SA") &&
           phone.length !== 13
@@ -51,6 +49,7 @@ router.post("/", async (req, res) => {
       });
     }
     const data = resultValidation.data;
+
     const isPhone = await prisma.user.findUnique({
       where: { phone: data.phone },
     });
@@ -58,6 +57,7 @@ router.post("/", async (req, res) => {
       return res
         .status(400)
         .json({ message: getTranslation(lang, "phone_already_used") });
+
     if (data.email) {
       const isEmail = await prisma.user.findUnique({
         where: { email: data.email },
@@ -69,7 +69,7 @@ router.post("/", async (req, res) => {
     }
     //firebase authentication
     const firebaseUser = await auth.createUser({
-      displayName: data.fullname,
+      displayName: data.full_name,
       email: `${data.phone}@gmail.com`,
       password: data.password,
     });
@@ -79,10 +79,24 @@ router.post("/", async (req, res) => {
     data.password = await bcrypt.hash(data.password, 10);
 
     const user = await prisma.user.create({
-      data,
+      data: {
+        ...data,
+        role: {
+          connect: {
+            name: "customer",
+          },
+        },
+      },
+      include: {
+        role: {
+          select: {
+            name: true,
+          },
+        },
+      },
     });
     const token = jwt.sign(
-      { userId: user.id, role: user.role },
+      { userId: user.id, role: user.role?.name },
       process.env.SECRET_KEY
     );
 
@@ -127,7 +141,7 @@ router.post("/", async (req, res) => {
       user: {
         id: user.id,
         firebaseEmail: `${user.phone}@gmail.com`,
-        role: user.role,
+        role: user.role?.name,
       },
     });
   } catch (error) {

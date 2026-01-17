@@ -6,11 +6,11 @@ import generateCode from "../../../utils/generateCode.js";
 // import { sendSMSMessage } from "../../../utils/OTP-messages.js";
 
 const router = express.Router();
-router.get("/", authorization, async (req, res) => {
+router.get("/", authorization(), async (req, res) => {
   const lang = req.query.lang || "ar";
   try {
     const user = req.user;
-    if (user.isConfirmed) {
+    if (user.is_confirmed) {
       return res
         .status(403)
         .json({ message: getTranslation(lang, "already_confirmed") });
@@ -18,13 +18,13 @@ router.get("/", authorization, async (req, res) => {
     const code = generateCode(6);
     await prisma.userVerify.deleteMany({
       where: {
-        userId: user.id,
+        user_id: user.id,
       },
     });
     await prisma.userVerify.create({
       data: {
         code: `${code}`,
-        userId: user.id,
+        user_id: user.id,
         phone: user.phone,
       },
     });

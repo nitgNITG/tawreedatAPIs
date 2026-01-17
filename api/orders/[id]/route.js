@@ -91,7 +91,7 @@ router.get("/:id", authorization, async (req, res) => {
       return res
         .status(404)
         .json({ message: getTranslation(lang, "notFound") });
-    if (user.role !== "ADMIN" && order.customerId !== req.user.id)
+    if (user.role !== "admin" && order.customerId !== req.user.id)
       return res
         .status(403)
         .json({ message: getTranslation(lang, "forbidden") });
@@ -126,7 +126,7 @@ router.put("/:id", authorization, async (req, res) => {
       return res
         .status(404)
         .json({ message: getTranslation(lang, "notFound") });
-    const isAdmin = user.role === "ADMIN";
+    const isAdmin = user.role === "admin";
     const isOwner = order.customerId === user.id;
     if (!isAdmin && !isOwner)
       return res
@@ -210,7 +210,7 @@ router.put("/:id", authorization, async (req, res) => {
         },
         args: {
           title: [],
-          desc: [order.orderNumber, user.fullname],
+          desc: [order.orderNumber, user.full_name],
         },
         lang,
         users: [],

@@ -505,8 +505,8 @@ export const payment = async (req, res) => {
         desc: "notification_payment_success_desc",
       },
       args: {
-        title: [user.fullname, amount, session.brandToken.brand.name],
-        desc: [user.fullname, amount, points, session.brandToken.brand.name, walletHistory.validFrom.toISOString().split("T")[0]],
+        title: [user.full_name, amount, session.brandToken.brand.name],
+        desc: [user.full_name, amount, points, session.brandToken.brand.name, walletHistory.validFrom.toISOString().split("T")[0]],
       },
       lang,
       users: users.BrandRepresentative.map((rep) => ({

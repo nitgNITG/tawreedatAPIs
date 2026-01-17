@@ -114,7 +114,7 @@ export const formatTitle = async (title, where, lang) => {
       select: {
         user: {
           select: {
-            fullname: true,
+            full_name: true,
             email: true,
             phone: true,
           },
@@ -124,7 +124,7 @@ export const formatTitle = async (title, where, lang) => {
 
     return {
       title: reverseIfArabic(
-        `${user.fullname} - ${fieldTranslations.orders?.[lang] || title}`
+        `${user.full_name} - ${fieldTranslations.orders?.[lang] || title}`
       ),
       subTitle: {
         email: user.email,
@@ -159,7 +159,7 @@ export const formatTitle = async (title, where, lang) => {
 
 router.post(
   "/",
-  authorization,
+  authorization(),
   validateSchema(downloadSchema),
   async (req, res) => {
     try {

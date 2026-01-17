@@ -250,8 +250,8 @@ export const paymentWithPoints = async (req, res) => {
         desc: "notification_payment_success_desc_points",
       },
       args: {
-        title: [user.fullname, amountToPoints, session.brandToken.brand.name],
-        desc: [user.fullname, amountToPoints, session.brandToken.brand.name],
+        title: [user.full_name, amountToPoints, session.brandToken.brand.name],
+        desc: [user.full_name, amountToPoints, session.brandToken.brand.name],
       },
       lang: lang,
       users: users.BrandRepresentative.map(({ User }) => ({

@@ -7,6 +7,7 @@ import path from "node:path";
 import fs from "node:fs";
 import cookieParser from "cookie-parser";
 import cleanupTempFiles from "./utils/cleanupTemp.js";
+import prisma from "./prisma/client.js";
 
 //create app
 const app = express();
@@ -81,7 +82,7 @@ const loadRoutes = async (folderPath, baseRoute = "/api") => {
     const filePath = path.join(fullPath, file);
     if (fs.statSync(filePath).isDirectory()) {
       // Convert bracket notation to Express parameter syntax for directories
-      const dirRoute = file.replace(/\[([^\]]+)\]/g, "");
+      const dirRoute = file.replaceAll(/\[([^\]]+)\]/g, "");
       await loadRoutes(filePath, `${baseRoute}/${dirRoute}`);
     } else if (file.endsWith(".js")) {
       const fileUrl = pathToFileURL(filePath).href;
@@ -114,3 +115,114 @@ const loadRoutes = async (folderPath, baseRoute = "/api") => {
 })();
 
 cleanupTempFiles();
+
+// export async function migrateUsersOldToNew() {
+//   const users = await prisma.user.findMany();
+
+//   console.log(`Found ${users.length} users to migrate`);
+
+//   for (const user of users) {
+//     const data = {};
+
+//     // name
+//     if (!user.full_name && user.fullname) {
+//       data.full_name = user.fullname;
+//     }
+
+//     // image
+//     if (!user.image_url && user.imageUrl) {
+//       data.image_url = user.imageUrl;
+//     }
+
+//     // last login
+//     if (!user.last_login_at && user.lastLoginAt) {
+//       data.last_login_at = user.lastLoginAt.toISOString();
+//     }
+
+//     // confirmed
+//     if (user.is_confirmed === null && user.isConfirmed !== null) {
+//       data.is_confirmed = user.isConfirmed;
+//     }
+
+//     // password updated
+//     if (!user.password_last_updated && user.passwordLastUpdated) {
+//       data.password_last_updated = user.passwordLastUpdated;
+//     }
+
+//     // birth date
+//     if (!user.birth_date && user.birthDate) {
+//       data.birth_date = user.birthDate;
+//     }
+
+//     // fcm
+//     if (!user.fcm_token && user.fcmToken) {
+//       data.fcm_token = user.fcmToken;
+//     }
+
+//     // login type
+//     if (!user.login_type && user.loginType) {
+//       data.login_type = user.loginType;
+//     }
+
+//     // apple id
+//     if (!user.apple_id && user.appleId) {
+//       data.apple_id = user.appleId;
+//     }
+
+//     // deleted → deleted_at
+//     if (!user.deleted_at && user.isDeleted === true) {
+//       data.deleted_at = new Date();
+//     }
+
+//     // createdAt -> created_at
+//     if (!user.created_at && user.createdAt) {
+//       data.created_at = user.createdAt;
+//     }
+
+//     if (Object.keys(data).length > 0) {
+//       await prisma.user.update({
+//         where: { id: user.id },
+//         data,
+//       });
+//     }
+//   }
+
+//   console.log("✅ User migration completed");
+// }
+
+// export async function nullifyOldUserColumns() {
+//   const result = await prisma.user.updateMany({
+//     data: {
+//       role_id: "95d21c53-404a-4f02-8daa-65dc0c076b89",
+//     },
+//   });
+
+//   console.log(`✅ Old user columns nulled for ${result.count} users`);
+// }
+
+// const ROLES = [
+//   { name: admin, description: "System administrator" },
+//   { name: "customer", description: "Regular customer" },
+//   { name: "supplier", description: "Product supplier" },
+// ];
+
+// export async function seedUserRoles() {
+//   for (const role of ROLES) {
+//     await prisma.userRole.upsert({
+//       where: { name: role.name },
+//       update: {},
+//       create: {
+//         name: role.name,
+//         description: role.description,
+//       },
+//     });
+//   }
+
+//   console.log("✅ User roles seeded successfully");
+// }
+
+// try {
+//   nullifyOldUserColumns();
+// } catch (error) {
+//   console.error("❌ Error during user migration:", error);
+// }

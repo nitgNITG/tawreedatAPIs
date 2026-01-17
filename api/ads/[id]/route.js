@@ -36,11 +36,11 @@ router
     }
   })
 
-  .put(authorization, upload.single("imageUrl"), async (req, res) => {
+  .put(authorization(), upload.single("imageUrl"), async (req, res) => {
     const lang = langReq(req);
     try {
       const admin = req.user;
-      if (admin.role !== "ADMIN") {
+      if (admin.role !== "admin") {
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });
@@ -69,7 +69,7 @@ router
         });
       }
 
-      const data = resultValidation.data;      
+      const data = resultValidation.data;
       const ad = await prisma.ad.findUnique({
         where: { id },
       });
@@ -103,12 +103,12 @@ router
     }
   })
 
-  .delete(authorization, async (req, res) => {
+  .delete(authorization(), async (req, res) => {
     const lang = langReq(req);
     const id = +req.params.id;
     try {
       const admin = req.user;
-      if (admin?.role !== "ADMIN") {
+      if (admin?.role !== "admin") {
         return res
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });

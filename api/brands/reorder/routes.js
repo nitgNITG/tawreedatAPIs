@@ -19,12 +19,12 @@ const brandsReorderSchema = z.object({
     .min(1, "At least one brand is required"),
 });
 
-router.post("/", authorization, async (req, res) => {
+router.post("/", authorization(), async (req, res) => {
   const lang = langReq(req);
 
   try {
     const admin = req.user;
-    if (admin?.role !== "ADMIN") {
+    if (admin?.role !== "admin") {
       return res.status(403).json({
         message: getTranslation(lang, "not_allowed"),
       });
