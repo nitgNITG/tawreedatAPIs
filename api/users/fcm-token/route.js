@@ -6,7 +6,7 @@ import admin, { db } from "../../../firebase/admin.js";
 
 const router = express.Router();
 
-router.post("/", authorization, async (req, res) => {
+router.post("/", authorization(), async (req, res) => {
   const lang = req.query.lang || "en";
   try {
     const { fcmToken } = req.body;
@@ -40,7 +40,7 @@ router.post("/", authorization, async (req, res) => {
       .get();
 
     console.log(
-      `Found ${undeliveredNotificationsSnapshot.size} undelivered notifications`
+      `Found ${undeliveredNotificationsSnapshot.size} undelivered notifications`,
     );
 
     // Send undelivered notifications
@@ -69,7 +69,7 @@ router.post("/", authorization, async (req, res) => {
           } catch (error) {
             console.error(
               `❌ Failed to resend notification ${doc.id}:`,
-              error.message
+              error.message,
             );
 
             // If token is invalid, update user record again
@@ -86,7 +86,7 @@ router.post("/", authorization, async (req, res) => {
             }
             return false;
           }
-        }
+        },
       );
 
       const results = await Promise.all(sendPromises);

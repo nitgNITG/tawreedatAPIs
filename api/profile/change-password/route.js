@@ -20,7 +20,7 @@ const changePasswordSchema = (lang) => {
       .max(100, { message: getTranslation(lang, "password_too_long") }),
   });
 };
-router.patch("/", authorization, async (req, res) => {
+router.patch("/", authorization(), async (req, res) => {
   const lang = langReq(req);
   const user = req.user;
   try {
@@ -43,7 +43,7 @@ router.patch("/", authorization, async (req, res) => {
 
     const isPasswordValid = await bcrypt.compare(
       data.oldPassword,
-      user.password
+      user.password,
     );
 
     if (!isPasswordValid) {

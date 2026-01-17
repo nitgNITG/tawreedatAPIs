@@ -149,7 +149,7 @@ router
             "order.customer.full_name",
             "reviewedBy.full_name",
           ],
-          "OR"
+          "OR",
         );
 
       // Admin can get all refunds, customer only their own
@@ -188,7 +188,7 @@ router
   });
 
 // Approve / Reject refund (admin only)
-router.put("/:id", authorization, async (req, res) => {
+router.put("/:id", authorization(), async (req, res) => {
   const lang = langReq(req);
   const user = req.user;
   const { status } = req.body; // APPROVED | REJECTED

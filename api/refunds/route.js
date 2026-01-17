@@ -16,7 +16,7 @@ import processPaymobRefund from "../../services/refund/paymob.refund.js";
 const router = express.Router();
 // admin refund route
 
-router.post("/", authorization, async (req, res) => {
+router.post("/", authorization(), async (req, res) => {
   const lang = langReq(req);
   const user = req.user;
 

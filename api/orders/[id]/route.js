@@ -42,7 +42,7 @@ const adminUpdateSchema = (lang) => {
         ],
         {
           message: getTranslation(lang, "invalidStatus"),
-        }
+        },
       )
       .optional(),
     paymentStatus: z
@@ -75,7 +75,7 @@ const adminUpdateSchema = (lang) => {
 const router = express.Router();
 
 // Get a single order by ID
-router.get("/:id", authorization, async (req, res) => {
+router.get("/:id", authorization(), async (req, res) => {
   const lang = langReq(req);
   const id = req.params.id;
   const user = req.user;
@@ -108,7 +108,7 @@ router.get("/:id", authorization, async (req, res) => {
 });
 
 // Update an order
-router.put("/:id", authorization, async (req, res) => {
+router.put("/:id", authorization(), async (req, res) => {
   const lang = langReq(req);
   const id = req.params.id;
   const updates = req.body;
@@ -268,7 +268,7 @@ router.put("/:id", authorization, async (req, res) => {
 });
 
 // Delete an order
-router.delete("/:id", authorization, async (req, res) => {
+router.delete("/:id", authorization(), async (req, res) => {
   const lang = langReq(req);
   const id = req.params.id;
   try {

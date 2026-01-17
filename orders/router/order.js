@@ -9,12 +9,12 @@ const router = express.Router();
 
 router.post("/redirect-payment", redirectPayment);
 router.get("/order-session/:id", orderSession);
-router.post("/payment/urway/:sessionId", authorization, UrwayPayment);
-router.post("/payment/:sessionId", authorization, payment);
+router.post("/payment/urway/:sessionId", authorization(), UrwayPayment);
+router.post("/payment/:sessionId", authorization(), payment);
 router.post(
   "/payment-with-points/:sessionId",
-  authorization,
-  paymentWithPoints
+  authorization(),
+  paymentWithPoints,
 );
 
 export default router;

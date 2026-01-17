@@ -14,12 +14,12 @@ const OnBoardingReorderSchema = z.object({
       z.object({
         id: z.number().int().positive(),
         sortId: z.number().int().min(1),
-      })
+      }),
     )
     .min(1, "At least one ad is required"),
 });
 
-router.post("/", authorization, async (req, res) => {
+router.post("/", authorization(), async (req, res) => {
   const lang = langReq(req);
 
   try {
@@ -39,7 +39,7 @@ router.post("/", authorization, async (req, res) => {
           parsed.error.issues.map((issue) => ({
             path: issue.path,
             message: issue.message,
-          }))
+          })),
         );
       }
       return res.status(400).json({
@@ -52,7 +52,7 @@ router.post("/", authorization, async (req, res) => {
 
     // Build SQL
     const caseSql = OnBoarding.map((o) => `WHEN ${o.id} THEN ${o.sortId}`).join(
-      " "
+      " ",
     );
     const idsSql = OnBoarding.map((o) => o.id).join(",");
 

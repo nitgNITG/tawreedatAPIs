@@ -23,7 +23,7 @@ const getPaymentSchema = z
     message: "orderId or intentionId is required",
   });
 
-router.post("/", authorization, async (req, res) => {
+router.post("/", authorization(), async (req, res) => {
   const lang = langReq(req);
   const user = req.user;
 
@@ -145,7 +145,7 @@ router.post("/", authorization, async (req, res) => {
   }
 });
 
-router.get("/", authorization, async (req, res) => {
+router.get("/", authorization(), async (req, res) => {
   const lang = langReq(req);
   const user = req.user;
 
