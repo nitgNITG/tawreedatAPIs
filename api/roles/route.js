@@ -36,6 +36,8 @@ router
     try {
       const resultValidation = roleSchema(lang).safeParse(req.body);
       if (!resultValidation.success) {
+        console.log(resultValidation.error);
+
         return res.status(400).json({
           message: resultValidation.error.errors[0].message,
           errors: resultValidation.error.errors,

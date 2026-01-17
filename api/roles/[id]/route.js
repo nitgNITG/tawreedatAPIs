@@ -32,7 +32,11 @@ router
 
       return res.json({
         message: getTranslation(lang, "success"),
-        data: role,
+        data: {
+          ...role,
+          userCount: role._count.users,
+          _count: undefined,
+        },
       });
     } catch (error) {
       console.error(error);
