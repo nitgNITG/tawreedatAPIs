@@ -15,6 +15,13 @@ router
     try {
       const role = await prisma.userRole.findUnique({
         where: { id: roleId },
+        include: {
+          _count: {
+            select: {
+              users: true,
+            },
+          },
+        },
       });
 
       if (!role) {
