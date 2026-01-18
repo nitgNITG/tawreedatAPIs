@@ -4,7 +4,7 @@ import upload from "../../../middleware/upload.js";
 import prisma from "../../../prisma/client.js";
 import FeatureApi from "../../../utils/FetchDataApis.js";
 import getTranslation, { langReq } from "../../../middleware/getTranslation.js";
-import { categorySchema } from "../route.js";
+import { categorySchema } from "../../../schemas/category.schema.js"; // ✅ new path
 import uploadImage from "../../../utils/uploadImage.js";
 import deleteImage from "../../../utils/deleteImage.js";
 import pushNotification from "../../../utils/push-notification.js";
@@ -15,8 +15,14 @@ const router = express.Router();
 router
   .route("/:id")
   .get(async (req, res) => {
-    const id = +req.params.id;
     const lang = langReq(req);
+    const id = Number.parseInt(req.params.id);
+
+    if (Number.isNaN(id)) {
+      return res.status(400).json({
+        message: getTranslation(lang, "invalid_category_id"),
+      });
+    }
     try {
       const data = new FeatureApi(req).filter({ id }).fields().data;
       const category = await prisma.category.findUnique(data);
@@ -27,72 +33,104 @@ router
         });
       }
 
-      res
-        .status(200)
-        .json({ message: getTranslation(lang, "category_fetched"), category });
+      return res.status(200).json({
+        message: getTranslation(lang, "category_fetched"),
+        category,
+      });
     } catch (error) {
       console.error(error);
-      res.status(500).json({
+      return res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
     }
   })
   .put(
-    authorization(),
-    upload.fields([{ name: "imageUrl" }, { name: "iconUrl" }]),
+    authorization({ roles: ["admin"] }),
+    upload.fields([{ name: "image_url" }, { name: "icon_url" }]),
     async (req, res) => {
-      const id = +req.params.id;
       const lang = langReq(req);
+      const id = Number.parseInt(req.params.id);
+
+      if (Number.isNaN(id)) {
+        return res.status(400).json({
+          message: getTranslation(lang, "invalid_category_id"),
+        });
+      }
+
       try {
         const admin = req.user;
-        if (admin?.role !== "admin") {
-          return res
-            .status(403)
-            .json({ message: getTranslation(lang, "not_allowed") });
-        }
+
         const query = new FeatureApi(req).fields().data;
+
         const resultValidation = categorySchema(lang)
           .partial()
           .safeParse(req.body);
         if (!resultValidation.success) {
           return res.status(400).json({
-            message: resultValidation.error.errors[0].message,
-            errors: resultValidation.error.errors,
+            message: resultValidation.error.issues[0].message,
+            errors: resultValidation.error.issues.map((issue) => ({
+              path: issue.path,
+              message: issue.message,
+            })),
           });
         }
-        const cate = await prisma.category.findUnique({ where: { id } });
-        if (!cate) {
+
+        const existing = await prisma.category.findUnique({ where: { id } });
+        if (!existing) {
           return res.status(404).json({
             message: getTranslation(lang, "category_not_found"),
           });
         }
+
         const data = resultValidation.data;
-        const imageUrl = req?.files?.["imageUrl"]?.[0];
-        const iconUrl = req?.files?.["iconUrl"]?.[0];
-        if (imageUrl) {
-          data.imageUrl = await uploadImage(imageUrl, `/categories`);
+
+        // ✅ handle uploads (snake_case)
+        const imageFile = req.files?.["image_url"]?.[0];
+        const iconFile = req.files?.["icon_url"]?.[0];
+
+        if (imageFile) {
+          data.image_url = await uploadImage(imageFile, `/categories`);
+          // optional: delete old image when replacing
+          if (existing.image_url) await deleteImage(existing.image_url);
         }
-        if (iconUrl) {
-          data.iconUrl = await uploadImage(iconUrl, `/categories`);
+
+        if (iconFile) {
+          data.icon_url = await uploadImage(iconFile, `/categories`);
+          if (existing.icon_url) await deleteImage(existing.icon_url);
         }
-        if (data.deleteImage) {
-          await deleteImage(cate.imageUrl);
-          await deleteImage(cate.iconUrl);
-          data.imageUrl = null;
-          data.iconUrl = null;
+
+        // ✅ handle delete image flag (support both keys to avoid frontend mismatch)
+        const shouldDeleteImages =
+          data.deleteImage === true || data.delete_image === true;
+
+        if (shouldDeleteImages) {
+          if (existing.image_url) await deleteImage(existing.image_url);
+          if (existing.icon_url) await deleteImage(existing.icon_url);
+          data.image_url = null;
+          data.icon_url = null;
           delete data.deleteImage;
+          delete data.delete_image;
         }
+
+        // normalize parent_id empty string -> null
+        if (data.parent_id === "" || Number.isNaN(data.parent_id)) {
+          data.parent_id = null;
+        }
+
         const category = await prisma.category.update({
           where: { id },
           data,
           ...(query ?? []),
         });
+
         res.status(200).json({
           message: getTranslation(lang, "category_updated"),
           category,
         });
+
         await revalidateDashboard("categories");
+
         await pushNotification({
           key: {
             title: "notification_category_updated_title",
@@ -100,7 +138,7 @@ router
           },
           args: {
             title: [],
-            desc: [admin.full_name, category.name, category.nameAr],
+            desc: [admin.full_name, category.name, category.name_ar],
           },
           lang,
           users: [],
@@ -112,42 +150,68 @@ router
         });
       } catch (error) {
         console.error(error);
-        res.status(500).json({
+        return res.status(500).json({
           message: getTranslation(lang, "internalError"),
           error: error.message,
         });
       }
-    }
+    },
   )
-  .delete(authorization(), async (req, res) => {
-    const id = +req.params.id;
+  .delete(authorization({ roles: ["admin"] }), async (req, res) => {
     const lang = langReq(req);
-    try {
-      const admin = req.user;
-      if (admin?.role !== "admin")
-        return res
-          .status(403)
-          .json({ message: getTranslation(lang, "not_allowed") });
+    const id = Number.parseInt(req.params.id, 10);
 
-      const cate = await prisma.category.findUnique({ where: { id } });
-      if (!cate) {
+    if (Number.isNaN(id)) {
+      return res.status(400).json({
+        message: getTranslation(lang, "invalid_category_id"),
+      });
+    }
+
+    try {
+      const category = await prisma.category.findUnique({
+        where: { id },
+        select: { id: true, image_url: true, icon_url: true, deleted_at: true },
+      });
+
+      if (!category) {
         return res.status(404).json({
           message: getTranslation(lang, "category_not_found"),
         });
       }
-      const category = await prisma.category.delete({
-        where: {
-          id,
+
+      // optional permanent delete
+      if (req.query.permanent === "true") {
+        await prisma.category.delete({ where: { id } });
+
+        if (category.image_url) await deleteImage(category.image_url);
+        if (category.icon_url) await deleteImage(category.icon_url);
+
+        res.status(200).json({
+          message: getTranslation(lang, "success_delete_category"),
+        });
+
+        await revalidateDashboard("categories");
+        return;
+      }
+
+      // ✅ soft delete (deleted_at)
+      await prisma.category.update({
+        where: { id },
+        data: {
+          deleted_at: new Date(),
+          is_active: false,
         },
       });
-      await deleteImage(category.imageUrl);
-      res
-        .status(200)
-        .json({ message: getTranslation(lang, "success_delete_category") });
+
+      res.status(200).json({
+        message: getTranslation(lang, "category_archived"),
+      });
+
       await revalidateDashboard("categories");
+      return;
     } catch (error) {
       console.error(error);
-      res.status(500).json({
+      return res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });

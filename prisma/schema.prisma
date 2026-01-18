@@ -7,105 +7,46 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Enums
-
-enum Gender {
-  MALE
-  FEMALE
-}
-
-enum OrderStatus {
-  PENDING
-  CONFIRMED
-  PROCESSING
-  SHIPPED
-  DELIVERED
-  CANCELLED
-}
-
-enum PaymentMethod {
-  CREDIT_CARD
-  PAYPAL
-  BANK_TRANSFER
-  CASH_ON_DELIVERY
-}
-
-enum PaymentStatus {
-  PENDING
-  PAID
-  PARTIALLY_REFUNDED
-  REFUNDED
-  FAILED
-}
-
-enum RefundStatus {
-  REQUESTED
-  APPROVED
-  REJECTED
-  PROCESSING
-  COMPLETED
-  FAILED
-  CANCELLED
-}
-
-enum Language {
-  EN
-  AR
-}
-
-enum LoginType {
-  LOCAL
-  GOOGLE
-  FACEBOOK
-  APPLE
-}
-
-// User Management
 model User {
-  id         String    @id @default(uuid())
-  full_name  String    @db.VarChar(191)
-  email      String?   @unique @db.VarChar(70)
-  phone      String?   @unique @db.VarChar(20)
-  birth_date DateTime?
-  password   String?   @db.VarChar(100)
-  lang       Language  @default(AR)
-  image_url  String?   @db.VarChar(191)
-  gender     Gender    @default(MALE)
-
-  last_login_at         String?   @db.VarChar(191)
+  id                    String         @id @default(uuid())
+  email                 String?        @unique @db.VarChar(70)
+  phone                 String?        @unique @db.VarChar(20)
+  password              String?        @db.VarChar(100)
+  lang                  Language       @default(AR)
+  apple_id              String?
+  birth_date            DateTime?
+  created_at            DateTime?      @default(now())
+  deleted_at            DateTime?
+  fcm_token             String?
+  full_name             String
+  image_url             String?
+  is_confirmed          Boolean?       @default(true)
+  last_login_at         String?
+  login_type            LoginType      @default(LOCAL)
   password_last_updated DateTime?
-  login_type            LoginType @default(LOCAL)
+  role_id               String
+  updated_at            DateTime?      @updatedAt
+  is_Active             Boolean?       @default(true)
+  gender                Gender         @default(MALE)
+  UserAddress           UserAddress[]
+  cartItems             CartItem[]
+  orders                Order[]
+  requestedRefunds      Refund[]       @relation("RefundRequestedBy")
+  reviewedRefunds       Refund[]       @relation("RefundReviewedBy")
+  reviews               Review[]
+  role                  UserRole       @relation(fields: [role_id], references: [id])
+  UserVerify            UserVerify[]
+  wallet                Wallet?
+  wishlist              WishlistItem[]
 
-  is_confirmed Boolean? @default(true)
-  is_Active    Boolean? @default(true)
-
-  fcm_token String? @db.VarChar(191)
-  role_id   String
-  apple_id  String? @db.VarChar(191)
-
-  created_at DateTime? @default(now())
-  updated_at DateTime? @updatedAt
-  deleted_at DateTime?
-
-  // Relations
-  orders           Order[]
-  cartItems        CartItem[]
-  reviews          Review[]
-  wishlist         WishlistItem[]
-  UserAddress      UserAddress[]
-  UserVerify       UserVerify[]
-  wallet           Wallet?
-  requestedRefunds Refund[]       @relation("RefundRequestedBy")
-  reviewedRefunds  Refund[]       @relation("RefundReviewedBy")
-  role             UserRole       @relation(fields: [role_id], references: [id])
-
+  @@index([role_id], map: "user_role_id_fkey")
   @@map("user")
 }
 
 model UserRole {
   id          String    @id @default(uuid())
-  name        String    @unique @db.VarChar(191)
-  description String?   @db.VarChar(191)
+  name        String    @unique
+  description String?
   created_at  DateTime  @default(now())
   updated_at  DateTime  @updatedAt
   deleted_at  DateTime?
@@ -120,8 +61,8 @@ model UserVerify {
   code       String   @unique
   phone      String?
   email      String?
-  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id], map: "UserVerify_user_id_fkey")
   @@map("user_verify")
@@ -141,35 +82,24 @@ model Wallet {
 }
 
 model UserAddress {
-  id Int @id @default(autoincrement())
-
-  // Address info
-  name    String // e.g. "Home", "Work", "Office"
-  address String
-  lat     String
-  long    String
-
+  id          Int      @id @default(autoincrement())
+  address     String
+  lat         String
+  long        String
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  city        String?
+  country     String?
+  isDefault   Boolean  @default(false)
+  name        String
+  notes       String?
+  postalCode  String?
+  state       String?
+  apartmentNo String?
   buildingNo  String?
   floorNo     String?
-  apartmentNo String?
-
-  // Extra useful fields
-  city       String?
-  state      String?
-  country    String?
-  postalCode String?
-  notes      String?
-
-  // Flags
-  isDefault Boolean @default(false)
-
-  // Relations
-  userId String
-  User   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  User        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId], map: "Address_userId_fkey")
 }
@@ -186,277 +116,308 @@ model Faqs {
   @@index([sortId])
 }
 
-// Categories for products
 model Category {
-  id                Int      @id @default(autoincrement())
-  name              String   @unique
-  nameAr            String? // Arabic name
-  description       String?  @db.LongText
-  descriptionAr     String?  @db.LongText
-  imageUrl          String?
-  iconUrl           String?
-  parentId          Int?
-  isActive          Boolean  @default(true)
-  productAttributes Json?
-  sortId            Int      @default(0)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                 Int             @id @default(autoincrement())
+  name               String          @unique
+  slug               String?         @unique
+  name_ar            String?
+  description        String?         @db.LongText
+  description_ar     String?         @db.LongText
+  image_url          String?
+  icon_url           String?
+  parent_id          Int?
+  is_active          Boolean
+  product_attributes Json?
+  synonyms           String?         @db.VarChar(191)
+  created_at         DateTime        @default(now())
+  updated_at         DateTime        @updatedAt
+  deleted_at         DateTime?
+  sort_id            Int             @default(0)
+  brands             BrandCategory[]
+  parent             Category?       @relation("CategoryHierarchy", fields: [parent_id], references: [id])
+  children           Category[]      @relation("CategoryHierarchy")
+  products           Product[]
 
-  // Relations
-  parent   Category?       @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children Category[]      @relation("CategoryHierarchy")
-  products Product[]
-  brands   BrandCategory[]
-
-  @@index([sortId])
-  @@fulltext([name, nameAr, description, descriptionAr])
-  @@map("categories")
-}
-
-// Products (Books, Stationery, etc.)
-model Product {
-  id             String    @id @default(uuid())
-  name           String
-  nameAr         String? // Arabic name
-  description    String?   @db.LongText
-  descriptionAr  String?   @db.LongText
-  price          Float
-  costPrice      Float?
-  stock          Int       @default(0)
-  minStock       Int       @default(5)
-  sku            String    @unique
-  barcode        String?   @unique
-  images         String?   @db.LongText
-  weight         Float?
-  dimensions     String?
-  isActive       Boolean   @default(true)
-  isFeatured     Boolean   @default(false)
-  isBestSeller   Boolean   @default(false)
-  offer          Float?
-  offerValidFrom DateTime?
-  offerValidTo   DateTime?
-  categoryId     Int
-  supplierId     String?
-  brandId        Int?
-  rating         Float?    @default(0.0)
-  totalReviews   Int       @default(0)
-  sortId         Int       @default(0)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  // Relations
-  category   Category           @relation(fields: [categoryId], references: [id])
-  supplier   Supplier?          @relation(fields: [supplierId], references: [id])
-  brand      Brand?             @relation(fields: [brandId], references: [id])
-  orderItems OrderItem[]
-  cartItems  CartItem[]
-  reviews    Review[]
-  wishlist   WishlistItem[]
-  attributes ProductAttribute[]
-
-  @@index([sortId])
-  @@fulltext([name, nameAr, description, descriptionAr])
-  @@map("products")
-}
-
-model ProductAttribute {
-  id        Int     @id @default(autoincrement())
-  key       String
-  value     String
-  valueAr   String?
-  productId String
-
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  @@unique([key, productId, value, valueAr])
-  @@map("product_attributes")
-}
-
-model SealingUnit {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  nameAr    String? // Arabic name
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("sealing_units")
+  @@index([sort_id], map: "categories_sortId_idx")
+  @@index([parent_id])
+  @@fulltext([name, name_ar, description, description_ar], map: "categories_name_nameAr_description_descriptionAr_idx")
+  @@map("category")
 }
 
 model Brand {
-  id            Int     @id @default(autoincrement())
-  name          String  @unique
-  slug          String  @unique
-  nameAr        String? // Arabic name
-  description   String? @db.LongText
-  descriptionAr String? @db.LongText
-  logoUrl       String?
-  coverUrl      String?
-  isActive      Boolean @default(true)
-  isDeleted     Boolean @default(false)
-  isPopular     Boolean @default(false)
-  upTo          Int?
-  sortId        Int     @default(0)
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  slug String @unique
 
-  // Relations
-  products   Product[]
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
+  name_ar   String?
+  logo_url  String?
+  cover_url String?
+
+  is_active  Boolean @default(true)
+  is_popular Boolean @default(false)
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+
+  description    String? @db.LongText
+  description_ar String? @db.LongText
+  synonyms       String? @db.VarChar(191)
+
+  up_to   Int?
+  sort_id Int  @default(0)
+
   categories BrandCategory[]
+  products   Product[]
 
-  @@index([sortId])
-  @@fulltext([name, nameAr, description, descriptionAr])
-  @@map("brands")
+  @@index([sort_id])
+  @@fulltext([name, name_ar, synonyms, description, description_ar])
+  @@map("brand")
 }
 
 model BrandCategory {
-  id         Int      @id @default(autoincrement())
-  brandId    Int
-  categoryId Int
-  createdAt  DateTime @default(now())
+  id Int @id @default(autoincrement())
 
-  brand    Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  brand_id    Int
+  category_id Int
+  created_at  DateTime @default(now())
 
-  @@unique([brandId, categoryId])
-  @@map("brand_categories")
+  brand    Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [category_id], references: [id], onDelete: Cascade)
+
+  @@unique([brand_id, category_id])
+  @@index([category_id], map: "brand_categories_categoryId_fkey")
+  @@map("brand_category")
 }
 
-// Suppliers
+model Product {
+  id             String  @id @default(uuid())
+  name           String
+  name_ar        String?
+  description    String? @db.LongText
+  description_ar String? @db.LongText
+  synonyms       String? @db.VarChar(191)
+  slug           String? @unique
+
+  price      Float
+  cost_price Float?
+  stock      Int    @default(0)
+  min_stock  Int    @default(5)
+
+  sku         String  @unique
+  barcode     String? @unique
+  images      String? @db.LongText
+  weight      Float?
+  dimensions  String?
+  is_active   Boolean @default(true)
+  is_featured Boolean @default(false)
+  offer       Float?
+  category_id Int
+  supplier_id String?
+  brand_id    Int?
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+
+  rating           Float?    @default(0)
+  total_reviews    Int       @default(0)
+  offer_valid_from DateTime?
+  offer_valid_to   DateTime?
+
+  is_best_seller Boolean @default(false)
+  sort_id        Int     @default(0)
+
+  // new fields
+  unit_type                        Int?
+  color                            String?       @db.VarChar(191)
+  min_discount_rate                Decimal?
+  min_amount_for_one_user          Decimal?
+  max_amount_for_one_user          Decimal?
+  min_amount_for_one_order         Decimal?
+  max_amount_for_one_order         Decimal?
+  refundable                       Boolean?
+  refundable_period                Decimal?
+  refund_policy                    String?       @db.Text
+  price_out_site                   Decimal?
+  discount_type                    DiscountType?
+  discount_value_total             Decimal?
+  discount_value_part_for_customer Decimal?
+  discount_value_part_for_company  Decimal?
+  discount_value_part_for_offers   Decimal?
+  available_amount                 Decimal?
+  reserved_in_carts_amount         Decimal?
+  ordered_amount                   Decimal?
+
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+  attributes ProductAttribute[]
+
+  unit     ProductUnit? @relation(fields: [unit_type], references: [id])
+  brand    Brand?       @relation(fields: [brand_id], references: [id])
+  category Category     @relation(fields: [category_id], references: [id])
+  supplier Supplier?    @relation(fields: [supplier_id], references: [id])
+
+  reviews  Review[]
+  wishlist WishlistItem[]
+
+  @@index([sort_id])
+  @@index([brand_id])
+  @@index([category_id])
+  @@index([supplier_id])
+  @@fulltext([name, name_ar, description, description_ar])
+  @@map("product")
+}
+
+enum DiscountType {
+  percent
+  fixed
+}
+
+model ProductAttribute {
+  id         Int     @id @default(autoincrement())
+  key        String
+  value      String
+  product_id String
+  value_ar   String?
+  product    Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([product_id, key])
+  @@index([product_id], map: "product_attribute_product_id_fkey")
+  @@map("product_attribute")
+}
+
+model ProductUnit {
+  id             Int       @id @default(autoincrement())
+  name           String?   @db.VarChar(191)
+  price          Decimal?
+  description    String?   @db.VarChar(191)
+  description_ar String?   @db.VarChar(191)
+  products       Product[]
+
+  @@map("product_unit")
+}
+
 model Supplier {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   name          String
   nameAr        String?
-  email         String?  @unique
+  email         String?   @unique
   phone         String?
   address       String?
   city          String?
   governorate   String?
   contactPerson String?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Relations
-  products Product[]
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  products      Product[]
 
   @@map("suppliers")
 }
 
-// Orders
 model Order {
-  id             Int    @id @default(autoincrement())
-  orderNumber    String @unique
-  customerId     String
-  totalAmount    Float
-  shippingCost   Float  @default(0)
-  discount       Float  @default(0)
-  taxAmount      Float  @default(0)
-  refundedAmount Float  @default(0)
-
-  status        OrderStatus   @default(PENDING)
-  paymentMethod PaymentMethod @default(CASH_ON_DELIVERY)
-  paymentStatus PaymentStatus @default(PENDING)
-
-  paymentId       String?
-  shippingAddress Json
-  userAddressId   Int?
+  id              Int              @id @default(autoincrement())
+  orderNumber     String           @unique
+  customerId      String
+  totalAmount     Float
+  shippingCost    Float            @default(0)
+  discount        Float            @default(0)
+  taxAmount       Float            @default(0)
+  status          OrderStatus      @default(PENDING)
+  paymentMethod   PaymentMethod    @default(CASH_ON_DELIVERY)
+  paymentStatus   PaymentStatus    @default(PENDING)
+  shippingAddress String           @db.LongText
   notes           String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  customer        User             @relation(fields: [customerId], references: [id])
-  items           OrderItem[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  paymentId       String?
+  userAddressId   Int?
+  refundedAmount  Float            @default(0)
   paymentAttempts PaymentAttempt[]
+  items           OrderItem[]
+  customer        User             @relation(fields: [customerId], references: [id])
   refunds         Refund[]
 
+  @@index([customerId], map: "orders_customerId_fkey")
   @@map("orders")
 }
 
 model PaymentAttempt {
   id          Int           @id @default(autoincrement())
   orderId     Int
-  provider    String // PAYMOB, STRIPE, etc
+  provider    String
   intentionId String?
   status      PaymentStatus @default(PENDING)
-  rawResponse Json?
+  rawResponse String?       @db.LongText
   createdAt   DateTime      @default(now())
-
-  order   Order    @relation(fields: [orderId], references: [id])
-  refunds Refund[]
+  order       Order         @relation(fields: [orderId], references: [id])
+  refunds     Refund[]
 
   @@index([orderId])
   @@index([intentionId])
 }
 
-// Order Items
 model OrderItem {
-  id        Int      @id @default(autoincrement())
-  orderId   Int
-  productId String
-  quantity  Int
-  price     Float // unit price at time of order
-  createdAt DateTime @default(now())
-
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
-
+  id          Int          @id @default(autoincrement())
+  orderId     Int
+  productId   String
+  quantity    Int
+  price       Float
+  createdAt   DateTime     @default(now())
+  order       Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product      @relation(fields: [productId], references: [id])
   refundItems RefundItem[]
 
+  @@index([orderId], map: "order_items_orderId_fkey")
+  @@index([productId], map: "order_items_productId_fkey")
   @@map("order_items")
 }
 
 model Refund {
-  id               Int  @id @default(autoincrement())
+  id               Int             @id @default(autoincrement())
   orderId          Int
   paymentAttemptId Int?
-
-  amount   Float
-  currency String       @default("EGP")
-  reason   String?
-  status   RefundStatus @default(REQUESTED)
-
+  amount           Float
+  currency         String          @default("EGP")
+  reason           String?
+  status           RefundStatus    @default(REQUESTED)
   provider         String?
   providerRefundId String?
-  rawResponse      Json?
-
-  requestedById String?
-  reviewedById  String?
-  reviewedAt    DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  order          Order           @relation(fields: [orderId], references: [id])
-  paymentAttempt PaymentAttempt? @relation(fields: [paymentAttemptId], references: [id])
-  requestedBy    User?           @relation("RefundRequestedBy", fields: [requestedById], references: [id])
-  reviewedBy     User?           @relation("RefundReviewedBy", fields: [reviewedById], references: [id])
-  items          RefundItem[]
+  rawResponse      String?         @db.LongText
+  requestedById    String?
+  reviewedById     String?
+  reviewedAt       DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  items            RefundItem[]
+  order            Order           @relation(fields: [orderId], references: [id])
+  paymentAttempt   PaymentAttempt? @relation(fields: [paymentAttemptId], references: [id])
+  requestedBy      User?           @relation("RefundRequestedBy", fields: [requestedById], references: [id])
+  reviewedBy       User?           @relation("RefundReviewedBy", fields: [reviewedById], references: [id])
 
   @@index([orderId])
   @@index([providerRefundId])
   @@index([requestedById])
   @@index([reviewedById])
+  @@index([paymentAttemptId], map: "refunds_paymentAttemptId_fkey")
   @@map("refunds")
 }
 
 model RefundItem {
-  id          Int   @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   refundId    Int
   orderItemId Int
   quantity    Int
-  amount      Float // refunded amount for this item
-
-  refund    Refund    @relation(fields: [refundId], references: [id], onDelete: Cascade)
-  orderItem OrderItem @relation(fields: [orderItemId], references: [id])
+  amount      Float
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+  refund      Refund    @relation(fields: [refundId], references: [id], onDelete: Cascade)
 
   @@unique([refundId, orderItemId])
+  @@index([orderItemId], map: "refund_items_orderItemId_fkey")
   @@map("refund_items")
 }
 
-// Shopping Cart
 model CartItem {
   id        String   @id @default(uuid())
   userId    String
@@ -464,52 +425,42 @@ model CartItem {
   quantity  Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  // Relations
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
+  @@index([productId], map: "cart_items_productId_fkey")
   @@map("cart_items")
 }
 
-// Product Reviews
 model Review {
   id        String       @id @default(uuid())
   userId    String
   productId String
-  rating    Float // 1-5 stars
+  rating    Float
   comment   String?      @db.LongText
-  status    ReviewStatus @default(PENDING)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
-
-  // Relations
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  status    ReviewStatus @default(PENDING)
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
+  @@index([productId])
+  @@index([userId])
   @@map("reviews")
 }
 
-enum ReviewStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-// Wishlist
 model WishlistItem {
   id        String   @id @default(uuid())
   userId    String
   productId String
   createdAt DateTime @default(now())
-
-  // Relations
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
+  @@index([productId], map: "wishlist_items_productId_fkey")
   @@map("wishlist_items")
 }
 
@@ -521,7 +472,6 @@ model Ad {
   descriptionAr   String?       @db.LongText
   imageUrl        String
   targetUrl       String?
-  mobileScreen    String?       @db.LongText
   startDate       DateTime
   endDate         DateTime
   budget          Float         @default(0)
@@ -534,40 +484,13 @@ model Ad {
   timing          Int           @default(0)
   closable        Boolean?      @default(true)
   displayDuration Int           @default(24)
-  sortId          Int           @default(0)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  mobileScreen    String?       @db.LongText
+  sortId          Int           @default(0)
 
   @@index([sortId])
   @@map("Ads")
-}
-
-enum AdsPopupSize {
-  Small
-  Medium
-  Large
-}
-
-enum AdsFrequency {
-  Once
-  Daily
-  PerSession
-}
-
-enum AdsStatus {
-  Active
-  Inactive
-}
-
-enum AdsType {
-  Home
-  Popup
-}
-
-enum AdsPlacement {
-  Top
-  Middle
-  Bottom
 }
 
 model AboutApp {
@@ -604,8 +527,6 @@ model AboutApp {
 model ApplicationSettings {
   id                                 String   @id
   numberOfProductsOnHomepage         Int      @default(3)
-  numberOfAdsOnHomepage              Int      @default(3)
-  numberOfBrandsOnHomepage           Int      @default(3)
   numberOfCategoriesOnHomepage       Int      @default(3)
   numberOfFeaturedProductsOnHomepage Int      @default(10)
   numberOfLatestOffersOnHomepage     Int      @default(3)
@@ -614,20 +535,22 @@ model ApplicationSettings {
   lastAttempt                        DateTime @default(now())
   loginAttemptDurationMinutes        Int?     @default(20) @db.SmallInt
   loginAttempts                      Int?     @default(5) @db.SmallInt
-  paymentAttempts                    Int?     @default(5) @db.SmallInt
   createdAt                          DateTime @default(now())
   updatedAt                          DateTime @updatedAt
   loginAsGuest                       Boolean  @default(false)
   permanentDelete                    Boolean  @default(false)
-  app_android_version                String?
+  numberOfAdsOnHomepage              Int      @default(3)
+  numberOfBrandsOnHomepage           Int      @default(3)
   app_android_url                    String?
-  app_ios_version                    String?
+  app_android_version                String?
   app_ios_url                        String?
+  app_ios_version                    String?
   paymob_api_key                     String?  @db.LongText
-  paymob_secret_key                  String?
-  paymob_public_key                  String?
   paymob_base_url                    String?
   paymob_payment_methods             String?
+  paymob_public_key                  String?
+  paymob_secret_key                  String?
+  paymentAttempts                    Int?     @default(5) @db.SmallInt
   paymob_Iframes                     String?
 }
 
@@ -635,14 +558,14 @@ model OnBoarding {
   id         Int      @id @default(autoincrement())
   imageUrl   String?
   title      String
-  titleAr    String? // Arabic title
-  subtitle   String?
-  subtitleAr String? // Arabic subtitle
+  titleAr    String?
   content    String?
-  contentAr  String? // Arabic content
-  sortId     Int      @default(0)
+  contentAr  String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  subtitle   String?
+  subtitleAr String?
+  sortId     Int      @default(0)
 
   @@index([sortId])
 }
@@ -720,11 +643,97 @@ model ShippingPrice {
   basePrice             Float
   additionalWeightPrice Float
   estimatedDeliveryDays Int
-  region                Region         @relation(fields: [regionId], references: [id], onDelete: Cascade)
-  method                ShippingMethod @relation(fields: [methodId], references: [id], onDelete: Cascade)
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
+  method                ShippingMethod @relation(fields: [methodId], references: [id], onDelete: Cascade)
+  region                Region         @relation(fields: [regionId], references: [id], onDelete: Cascade)
 
   @@unique([regionId, methodId])
+  @@index([methodId], map: "ShippingPrices_methodId_fkey")
   @@map("ShippingPrices")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  PAYPAL
+  BANK_TRANSFER
+  CASH_ON_DELIVERY
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  PARTIALLY_REFUNDED
+  REFUNDED
+  FAILED
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum Language {
+  EN
+  AR
+}
+
+enum LoginType {
+  LOCAL
+  GOOGLE
+  FACEBOOK
+  APPLE
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AdsPopupSize {
+  Small
+  Medium
+  Large
+}
+
+enum AdsFrequency {
+  Once
+  Daily
+  PerSession
+}
+
+enum AdsStatus {
+  Active
+  Inactive
+}
+
+enum AdsType {
+  Home
+  Popup
+}
+
+enum AdsPlacement {
+  Top
+  Middle
+  Bottom
 }

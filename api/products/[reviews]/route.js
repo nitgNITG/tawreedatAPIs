@@ -1,9 +1,7 @@
 import express from "express";
-import authorization from "../../../middleware/authorization.js";
 import getTranslation, { langReq } from "../../../middleware/getTranslation.js";
 import prisma from "../../../prisma/client.js";
 import FeatureApi from "../../../utils/FetchDataApis.js";
-import { da } from "zod/v4/locales";
 
 const router = express.Router();
 

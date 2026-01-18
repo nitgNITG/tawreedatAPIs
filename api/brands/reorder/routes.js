@@ -13,23 +13,16 @@ const brandsReorderSchema = z.object({
     .array(
       z.object({
         id: z.number().int().positive(),
-        sortId: z.number().int().min(1),
-      })
+        sort_id: z.number().int().min(1),
+      }),
     )
     .min(1, "At least one brand is required"),
 });
 
-router.post("/", authorization(), async (req, res) => {
+router.post("/", authorization({ roles: ["admin"] }), async (req, res) => {
   const lang = langReq(req);
 
   try {
-    const admin = req.user;
-    if (admin?.role !== "admin") {
-      return res.status(403).json({
-        message: getTranslation(lang, "not_allowed"),
-      });
-    }
-
     // Validate input
     const parsed = brandsReorderSchema.safeParse(req.body);
 
@@ -39,7 +32,7 @@ router.post("/", authorization(), async (req, res) => {
           parsed.error.issues.map((issue) => ({
             path: issue.path,
             message: issue.message,
-          }))
+          })),
         );
       }
       return res.status(400).json({
@@ -52,13 +45,13 @@ router.post("/", authorization(), async (req, res) => {
 
     // Build SQL
     const caseSql = brands
-      .map((b) => `WHEN ${b.id} THEN ${b.sortId}`)
+      .map((b) => `WHEN ${b.id} THEN ${b.sort_id}`)
       .join(" ");
     const idsSql = brands.map((b) => b.id).join(",");
 
     const rawQuery = `
       UPDATE brands
-      SET sortId = CASE id
+      SET sort_id = CASE id
         ${caseSql}
       END
       WHERE id IN (${idsSql});

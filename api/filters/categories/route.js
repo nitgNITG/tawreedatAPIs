@@ -1,14 +1,13 @@
 import express from "express";
 import getTranslation, { langReq } from "../../../middleware/getTranslation.js";
 import prisma from "../../../prisma/client.js";
-import FeatureApi from "../../../utils/FetchDataApis.js";
 
 const router = express.Router();
 
-function getRangeWhere(categoryId, field, min, max) {
+function getRangeWhere(category_id, field, min, max) {
   return {
-    categoryId,
-    isActive: true,
+    category_id,
+    is_active: true,
     [field]: max === null ? { gte: min } : { gte: min, lte: max },
   };
 }
@@ -29,9 +28,9 @@ const WEIGHT_RANGES = [
 
 router.get("/:id", async (req, res) => {
   const lang = langReq(req);
-  const categoryId = Number(req.params.id);
+  const category_id = Number(req.params.id);
 
-  if (!categoryId || isNaN(categoryId)) {
+  if (!category_id || Number.isNaN(category_id)) {
     return res.status(400).json({
       message: getTranslation(lang, "invalidCategoryId"),
     });
@@ -41,14 +40,14 @@ router.get("/:id", async (req, res) => {
     const [brands, attributes] = await prisma.$transaction([
       // Brands
       prisma.brandCategory.findMany({
-        where: { categoryId },
+        where: { category_id },
         select: {
           brand: {
             select: {
               id: true,
               name: true,
-              nameAr: true,
-              logoUrl: true,
+              name_ar: true,
+              logo_url: true,
             },
           },
         },
@@ -58,14 +57,14 @@ router.get("/:id", async (req, res) => {
       prisma.productAttribute.findMany({
         where: {
           product: {
-            categoryId,
-            isActive: true,
+            category_id,
+            is_active: true,
           },
         },
         select: {
           key: true,
           value: true,
-          valueAr: true,
+          value_ar: true,
         },
       }),
     ]);
@@ -76,7 +75,7 @@ router.get("/:id", async (req, res) => {
       if (!acc[attr.key].some((v) => v.value === attr.value)) {
         acc[attr.key].push({
           value: attr.value,
-          valueAr: attr.valueAr,
+          value_ar: attr.value_ar,
         });
       }
       return acc;
@@ -86,20 +85,20 @@ router.get("/:id", async (req, res) => {
     const priceRanges = await Promise.all(
       PRICE_RANGES.map(async (r) => {
         const count = await prisma.product.count({
-          where: getRangeWhere(categoryId, "price", r.min, r.max),
+          where: getRangeWhere(category_id, "price", r.min, r.max),
         });
         return { ...r, count };
-      })
+      }),
     );
 
     // Count products per weight range
     const weightRanges = await Promise.all(
       WEIGHT_RANGES.map(async (r) => {
         const count = await prisma.product.count({
-          where: getRangeWhere(categoryId, "weight", r.min, r.max),
+          where: getRangeWhere(category_id, "weight", r.min, r.max),
         });
         return { ...r, count };
-      })
+      }),
     );
 
     return res.status(200).json({

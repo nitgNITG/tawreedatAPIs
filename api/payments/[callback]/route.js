@@ -108,7 +108,7 @@ router.post("/callback", async (req, res) => {
       include: {
         customer: {
           select: {
-            fcmToken: true,
+            fcm_token: true,
             lang: true,
           },
         },
@@ -166,7 +166,7 @@ router.post("/callback", async (req, res) => {
         users: [
           {
             id: order.customerId,
-            fcmToken: order.customer.fcmToken,
+            fcmToken: order.customer.fcm_token,
             lang: order.customer.lang,
           },
         ],

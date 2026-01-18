@@ -5,25 +5,38 @@ export const createBrandSchema = (lang) => {
   return z
     .object({
       name: z.string().min(1, getTranslation(lang, "name_required")),
-      nameAr: z.string().optional(),
+      name_ar: z.string().optional(),
       description: z.string().optional(),
-      descriptionAr: z.string().optional(),
-      isActive: z
+      description_ar: z.string().optional(),
+
+      synonyms: z
+        .string()
+        .max(191, getTranslation(lang, "synonyms_too_long"))
+        .optional(), // ✅ NEW
+
+      is_active: z
         .union([z.boolean(), z.string().transform((val) => val === "true")])
         .optional(),
-      isDeleted: z
+
+      deleted_at: z
+        .union([
+          z.string().transform((s) => new Date(s)), // transform string to Date
+          z.date(), // accept actual Date objects
+        ])
+        .nullable()
+        .optional(),
+
+      is_popular: z
         .union([z.boolean(), z.string().transform((val) => val === "true")])
         .optional(),
-      isPopular: z
-        .union([z.boolean(), z.string().transform((val) => val === "true")])
-        .optional(),
+
       products: z
         .union([
           z.array(z.number()),
           z.string().transform((val) => {
             try {
               const parsed = val ? JSON.parse(val) : [];
-              return Array.isArray(parsed) && parsed.length > 0 ? parsed : [];
+              return Array.isArray(parsed) ? parsed : [];
             } catch (e) {
               console.warn("Failed to parse products JSON:", e.message);
               return [];
@@ -31,12 +44,14 @@ export const createBrandSchema = (lang) => {
           }),
         ])
         .optional(),
+
       categories: z
         .union([
           z.array(z.number()),
           z.string().transform((val) => {
             try {
-              return val ? JSON.parse(val) : [];
+              const parsed = val ? JSON.parse(val) : [];
+              return Array.isArray(parsed) ? parsed : [];
             } catch (e) {
               console.warn("Failed to parse categories JSON:", e.message);
               return [];
@@ -46,7 +61,7 @@ export const createBrandSchema = (lang) => {
         .optional(),
     })
     .refine((data) => {
-      data.slug = data.name.toLowerCase().replace(/\s+/g, "-");
+      data.slug = data.name.toLowerCase().trim().replaceAll(/\s+/g, "-");
       return true;
     });
 };

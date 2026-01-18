@@ -10,34 +10,34 @@ router.get("/", async (req, res) => {
 
   try {
     const baseBrandFilter = {
-      isDeleted: false,
-      isActive: true,
+      is_deleted: false,
+      is_active: true,
     };
 
     const ranges = [
-      { label: "Below 10%", value: "below-10", where: { upTo: { lt: 10 } } },
+      { label: "Below 10%", value: "below-10", where: { up_to: { lt: 10 } } },
       {
         label: "10% - 20%",
         value: "10-20",
-        where: { upTo: { gte: 10, lte: 20 } },
+        where: { up_to: { gte: 10, lte: 20 } },
       },
       {
         label: "20% - 30%",
         value: "20-30",
-        where: { upTo: { gte: 20, lte: 30 } },
+        where: { up_to: { gte: 20, lte: 30 } },
       },
-      { label: "Above 30%", value: "above-30", where: { upTo: { gt: 30 } } },
+      { label: "Above 30%", value: "above-30", where: { up_to: { gt: 30 } } },
     ];
 
     const transactionQueries = [
       prisma.category.findMany({
-        where: { parentId: null },
+        where: { parent_id: null },
         select: {
           id: true,
           name: true,
-          nameAr: true,
-          imageUrl: true,
-          iconUrl: true,
+          name_ar: true,
+          image_url: true,
+          icon_url: true,
         },
       }),
 
@@ -47,7 +47,7 @@ router.get("/", async (req, res) => {
             ...baseBrandFilter,
             ...r.where,
           },
-        })
+        }),
       ),
     ];
 
@@ -56,12 +56,12 @@ router.get("/", async (req, res) => {
     const categories = results[0];
     const counts = results.slice(1);
 
-    const upToRanges = ranges.map((range, idx) => ({
+    const up_toRanges = ranges.map((range, idx) => ({
       ...range,
       count: counts[idx],
     }));
 
-    return res.status(200).json({ categories, upToRanges });
+    return res.status(200).json({ categories, up_toRanges });
   } catch (error) {
     console.error(error);
     return res.status(500).json({

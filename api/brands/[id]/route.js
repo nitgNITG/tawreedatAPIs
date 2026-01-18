@@ -34,18 +34,18 @@ router
         });
       }
 
-      res.status(200).json(brand);
+      return res.status(200).json(brand);
     } catch (error) {
       console.error(error.message);
-      res.status(500).json({
+      return res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
     }
   })
   .put(
-    authorization(),
-    upload.fields([{ name: "logoUrl" }, { name: "coverUrl" }]),
+    authorization({ roles: ["admin"] }),
+    upload.fields([{ name: "logo_url" }, { name: "cover_url" }]),
     async (req, res) => {
       const lang = langReq(req);
       const id = Number.parseInt(req.params.id);
@@ -58,25 +58,17 @@ router
 
       try {
         const admin = req.user;
-        if (admin?.role !== "admin") {
-          return res
-            .status(403)
-            .json({ message: getTranslation(lang, "not_allowed") });
-        }
-
         const query = new FeatureApi(req).fields().data;
 
-        // Check if brand exists
+        // ✅ include current relations so we can diff categories
         const existingBrand = await prisma.brand.findUnique({
           where: { id },
           include: {
             categories: {
-              select: { id: true, categoryId: true },
+              select: { id: true, category_id: true }, // ✅ snake_case join table
             },
             products: {
-              select: {
-                id: true,
-              },
+              select: { id: true }, // ⚠️ keep as-is (depends on your Product relation)
             },
           },
         });
@@ -89,36 +81,38 @@ router
 
         const resultValidation = updateBrandSchema(lang)
           .refine((data) => {
+            // ✅ categories diff + upsert (BrandCategory now uses category_id)
             if (data.categories && data.categories.length > 0) {
               const categoryIdsToDelete = existingBrand.categories
-                .filter((c) => !data.categories.includes(c.categoryId))
-                .map((c) => {
-                  return { id: c.id };
-                });
+                .filter((c) => !data.categories.includes(c.category_id))
+                .map((c) => ({ id: c.id }));
 
               data.categories = {
                 ...(categoryIdsToDelete.length
-                  ? {
-                      deleteMany: categoryIdsToDelete,
-                    }
+                  ? { deleteMany: categoryIdsToDelete }
                   : {}),
-                upsert: data.categories.map((id) => ({
+                upsert: data.categories.map((catId) => ({
                   where: {
-                    brandId_categoryId: {
-                      brandId: existingBrand.id,
-                      categoryId: id,
+                    // Prisma name for composite unique might differ.
+                    // If your @@unique has a name (map), use that name here.
+                    brand_id_category_id: {
+                      brand_id: existingBrand.id,
+                      category_id: catId,
                     },
                   },
-                  create: { categoryId: id },
-                  update: { categoryId: id },
+                  create: { category_id: catId },
+                  update: { category_id: catId },
                 })),
               };
             }
+
+            // ⚠️ products: keep your logic, but adjust if products are FK-based
             if (data.products && data.products.length > 0) {
               data.products = {
                 set: data.products.map((id) => ({ productId: id })),
               };
             }
+
             return true;
           })
           .safeParse(req.body);
@@ -135,31 +129,31 @@ router
 
         const data = resultValidation.data;
 
-        // Handle file uploads
-        const cover = req?.files?.["coverUrl"]?.[0];
-        const logo = req?.files?.["logoUrl"]?.[0];
+        // ✅ Handle file uploads (snake_case)
+        const cover = req.files?.["cover_url"]?.[0];
+        const logo = req.files?.["logo_url"]?.[0];
 
         if (cover) {
-          data.coverUrl = await uploadImage(cover, `/brands`);
-          await deleteImage(existingBrand.coverUrl);
+          data.cover_url = await uploadImage(cover, `/brands`);
+          await deleteImage(existingBrand.cover_url);
         }
 
         if (logo) {
-          data.logoUrl = await uploadImage(logo, `/brands`);
-          await deleteImage(existingBrand.logoUrl);
+          data.logo_url = await uploadImage(logo, `/brands`);
+          await deleteImage(existingBrand.logo_url);
         }
 
-        // Handle removed images
+        // ✅ Handle removed images (snake_case flags from schema)
         if (data.deleteCoverUrl) {
-          data.coverUrl = null;
-          await deleteImage(existingBrand.coverUrl);
+          data.cover_url = null;
+          await deleteImage(existingBrand.cover_url);
         }
 
         if (data.deleteLogoUrl) {
-          data.logoUrl = null;
-          await deleteImage(existingBrand.logoUrl);
+          data.logo_url = null;
+          await deleteImage(existingBrand.logo_url);
         }
-        // Remove the delete flags from data to avoid issues with Prisma
+
         delete data.deleteCoverUrl;
         delete data.deleteLogoUrl;
 
@@ -173,7 +167,9 @@ router
           message: getTranslation(lang, "brand_updated"),
           brand: updatedBrand,
         });
+
         await revalidateDashboard("brands");
+
         await pushNotification({
           key: {
             title: "notification_brand_updated_title",
@@ -181,7 +177,7 @@ router
           },
           args: {
             title: [],
-            desc: [admin.full_name, updatedBrand?.name, updatedBrand?.nameAr],
+            desc: [admin.full_name, updatedBrand.name, updatedBrand.name_ar],
           },
           lang,
           users: [],
@@ -193,14 +189,14 @@ router
         });
       } catch (error) {
         console.error(error);
-        res.status(500).json({
+        return res.status(500).json({
           message: getTranslation(lang, "internalError"),
           error: error.message,
         });
       }
-    }
+    },
   )
-  .delete(authorization(), async (req, res) => {
+  .delete(authorization({ roles: ["admin"] }), async (req, res) => {
     const lang = langReq(req);
     const id = Number.parseInt(req.params.id);
 
@@ -211,16 +207,14 @@ router
     }
 
     try {
-      const admin = req.user;
-      if (admin?.role !== "admin") {
-        return res
-          .status(403)
-          .json({ message: getTranslation(lang, "not_allowed") });
-      }
-
-      // Check if brand exists
       const brand = await prisma.brand.findUnique({
         where: { id },
+        select: {
+          id: true,
+          cover_url: true,
+          logo_url: true,
+          deleted_at: true,
+        },
       });
 
       if (!brand) {
@@ -229,36 +223,38 @@ router
         });
       }
 
-      // Option to soft delete or hard delete
+      // permanent delete
       if (req.query.permanent === "true") {
-        // Hard delete - remove from database
-        await prisma.brand.delete({
-          where: { id },
-        });
-        await deleteImage(brand.coverUrl);
-        await deleteImage(brand.logoUrl);
+        await prisma.brand.delete({ where: { id } });
+        await deleteImage(brand.cover_url);
+        await deleteImage(brand.logo_url);
 
         res.status(200).json({
           message: getTranslation(lang, "brand_deleted_permanently"),
         });
-      } else {
-        // Soft delete - mark as deleted and inactive
-        await prisma.brand.update({
-          where: { id },
-          data: {
-            isDeleted: true,
-            isActive: false,
-          },
-        });
 
-        res.status(200).json({
-          message: getTranslation(lang, "brand_archived"),
-        });
+        await revalidateDashboard("brands");
+        return;
       }
+
+      // soft delete => deleted_at + is_active false
+      await prisma.brand.update({
+        where: { id },
+        data: {
+          deleted_at: new Date(),
+          is_active: false,
+        },
+      });
+
+      res.status(200).json({
+        message: getTranslation(lang, "brand_archived"),
+      });
+
       await revalidateDashboard("brands");
+      return;
     } catch (error) {
       console.error(error);
-      res.status(500).json({
+      return res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });

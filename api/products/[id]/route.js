@@ -14,11 +14,42 @@ import revalidateDashboard from "../../../utils/revalidateDashboard.js";
 
 const router = express.Router();
 
+// ✅ map camelCase request (schema) -> snake_case DB fields
+const toSnakeUpdate = (data) => {
+  const out = { ...data };
+
+  if ("nameAr" in out) ((out.name_ar = out.nameAr), delete out.nameAr);
+  if ("descriptionAr" in out)
+    ((out.description_ar = out.descriptionAr), delete out.descriptionAr);
+
+  if ("costPrice" in out)
+    ((out.cost_price = out.costPrice), delete out.costPrice);
+  if ("minStock" in out) ((out.min_stock = out.minStock), delete out.minStock);
+
+  if ("isActive" in out) ((out.is_active = out.isActive), delete out.isActive);
+  if ("isFeatured" in out)
+    ((out.is_featured = out.isFeatured), delete out.isFeatured);
+
+  if ("categoryId" in out)
+    ((out.category_id = out.categoryId), delete out.categoryId);
+  if ("brandId" in out) ((out.brand_id = out.brandId), delete out.brandId);
+  if ("supplierId" in out)
+    ((out.supplier_id = out.supplierId), delete out.supplierId);
+
+  if ("offerValidFrom" in out)
+    ((out.offer_valid_from = out.offerValidFrom), delete out.offerValidFrom);
+  if ("offerValidTo" in out)
+    ((out.offer_valid_to = out.offerValidTo), delete out.offerValidTo);
+
+  return out;
+};
+
 router
   .route("/:id")
   .get(async (req, res) => {
     const lang = langReq(req);
     const { id } = req.params;
+
     try {
       const data = new FeatureApi(req).fields().filter({ id }).data;
 
@@ -32,437 +63,356 @@ router
 
       const formattedProduct = parseProductImages(product);
 
-      res.status(200).json({
+      return res.status(200).json({
         message: getTranslation(lang, "success"),
         product: formattedProduct,
       });
     } catch (error) {
       console.error(error);
-      res.status(500).json({
+      return res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
     }
   })
-  .put(authorization(), upload.array("images", 5), async (req, res) => {
-    const lang = langReq(req);
-    const { id } = req.params;
-    try {
-      const admin = req.user;
+  .put(
+    authorization({ roles: ["admin"] }),
+    upload.array("images", 5),
+    async (req, res) => {
+      const lang = langReq(req);
+      const { id } = req.params;
 
-      if (admin.role !== "admin")
-        return res
-          .status(403)
-          .json({ message: getTranslation(lang, "not_allowed") });
+      try {
+        const admin = req.user;
 
-      const query = new FeatureApi(req).fields().data;
-      // Find existing product
-      const existingProduct = await prisma.product.findUnique({
-        where: { id },
-        include: { category: true },
-      });
+        const query = new FeatureApi(req).fields().data;
 
-      if (!existingProduct)
-        return res
-          .status(404)
-          .json({ message: getTranslation(lang, "product_not_found") });
-
-      let productAttributes = existingProduct.category.productAttributes;
-      if (req.body.categoryId) {
-        const newCategory = await prisma.category.findUnique({
-          where: { id: +req.body.categoryId },
-          select: {
-            productAttributes: true,
-          },
+        const existingProduct = await prisma.product.findUnique({
+          where: { id },
+          include: { category: true },
         });
-        if (!newCategory)
+
+        if (!existingProduct) {
           return res
             .status(404)
-            .json({ message: getTranslation(lang, "category_not_found") });
-        productAttributes = newCategory.productAttributes;
-      }
+            .json({ message: getTranslation(lang, "product_not_found") });
+        }
 
-      const resultValidation = productSchema(
-        lang,
-        productAttributes,
-        existingProduct.id
-      )
-        .partial()
-        .superRefine((data, ctx) => {
+        // ✅ category.product_attributes (new)
+        let categoryAttributes =
+          existingProduct.category?.product_attributes ?? null;
+
+        // still accepting old camelCase body: categoryId
+        const incomingCategoryId = req.body.categoryId ?? req.body.category_id;
+        if (incomingCategoryId) {
+          const newCategory = await prisma.category.findUnique({
+            where: { id: Number(incomingCategoryId) },
+            select: { product_attributes: true },
+          });
+
+          if (!newCategory) {
+            return res
+              .status(404)
+              .json({ message: getTranslation(lang, "category_not_found") });
+          }
+
+          categoryAttributes = newCategory.product_attributes;
+        }
+
+        const resultValidation = productSchema(
+          lang,
+          categoryAttributes,
+          existingProduct.id,
+        )
+          .partial()
+          .superRefine((data, ctx) => {
+            if (
+              data.offer &&
+              ((!data.offerValidFrom && !existingProduct.offerValidFrom) ||
+                (!data.offerValidTo && existingProduct.offerValidTo))
+            ) {
+              ctx.addIssue({
+                code: "custom",
+                message: getTranslation(lang, "offer_requires_valid_dates"),
+              });
+            }
+          })
+          .safeParse(req.body);
+
+        if (!resultValidation.success) {
+          return res.status(400).json({
+            message: resultValidation.error.issues[0].message,
+            errors: resultValidation.error.issues.map((issue) => ({
+              path: issue.path,
+              message: issue.message,
+            })),
+          });
+        }
+
+        // ✅ schema output is still camelCase -> map to snake_case for DB
+        const data = resultValidation.data;
+
+        // delete attributes
+        if (data.deleteAttributes) {
+          await prisma.productAttribute.deleteMany({
+            where: { id: { in: data.deleteAttributes } },
+          });
+          delete data.deleteAttributes;
+        }
+
+        // SKU uniqueness
+        if (data.sku && data.sku !== existingProduct.sku) {
+          const existingSKU = await prisma.product.findFirst({
+            where: { sku: data.sku, NOT: { id } },
+          });
+          if (existingSKU) {
+            return res
+              .status(400)
+              .json({ message: getTranslation(lang, "sku_already_exists") });
+          }
+        }
+
+        // barcode uniqueness
+        if (data.barcode && data.barcode !== existingProduct.barcode) {
+          const existingBarcode = await prisma.product.findFirst({
+            where: { barcode: data.barcode, NOT: { id } },
+          });
+          if (existingBarcode) {
+            return res.status(400).json({
+              message: getTranslation(lang, "barcode_already_exists"),
+            });
+          }
+        }
+
+        // Prepare updateData (skip image operation flags)
+        const updateData = {};
+        const imageOperationParams = [
+          "deleteSpecificImages",
+          "deleteAllImages",
+          "replaceImages",
+        ];
+
+        for (const key in data) {
           if (
-            data.offer &&
-            ((!data.offerValidFrom && !existingProduct.offerValidFrom) ||
-              (!data.offerValidTo && existingProduct.offerValidTo))
+            data[key] !== undefined &&
+            !imageOperationParams.includes(key) &&
+            data[key] !== existingProduct[key]
           ) {
-            ctx.addIssue({
-              code: "custom",
-              message: getTranslation(lang, "offer_requires_valid_dates"),
-            });
+            updateData[key] = data[key];
           }
-        })
-        .safeParse(req.body);
-      if (!resultValidation.success) {
-        return res.status(400).json({
-          message: resultValidation.error.issues[0].message,
-          errors: resultValidation.error.issues.map((issue) => ({
-            path: issue.path,
-            message: issue.message,
-          })),
-        });
-      }
-
-      const data = resultValidation.data;
-
-      // Debug: Log all received data
-      console.log("=== DEBUG: Received data ===");
-      console.log("req.body:", req.body);
-      console.log("Validation result data:", data);
-      console.log("req.files:", req.files?.length || 0, "files");
-      console.log("============================");
-      if (data.deleteAttributes) {
-        await prisma.productAttribute.deleteMany({
-          where: {
-            id: { in: data.deleteAttributes },
-          },
-        });
-        delete data.deleteAttributes;
-      }
-
-      // Check SKU uniqueness if updating SKU
-      if (data.sku && data.sku !== existingProduct.sku) {
-        const existingSKU = await prisma.product.findFirst({
-          where: { sku: data.sku, AND: { NOT: { id } } },
-        });
-        if (existingSKU)
-          return res
-            .status(400)
-            .json({ message: getTranslation(lang, "sku_already_exists") });
-      }
-
-      // Check barcode uniqueness if updating barcode
-      if (data.barcode && data.barcode !== existingProduct.barcode) {
-        const existingBarcode = await prisma.product.findFirst({
-          where: { barcode: data.barcode, AND: { NOT: { id } } },
-        });
-        if (existingBarcode)
-          return res
-            .status(400)
-            .json({ message: getTranslation(lang, "barcode_already_exists") });
-      }
-
-      // Prepare update data with only changed fields
-      const updateData = {};
-
-      // Image operation parameters that should not be included in database update
-      const imageOperationParams = [
-        "deleteSpecificImages",
-        "deleteAllImages",
-        "replaceImages",
-      ];
-
-      // Check each field for changes
-      for (const key in data) {
-        if (
-          data[key] !== existingProduct[key] &&
-          data[key] !== undefined &&
-          !imageOperationParams.includes(key)
-        ) {
-          updateData[key] = data[key];
         }
-      }
 
-      // Image Handling Operations:
-      // 1. deleteSpecificImages: Array or single string of image names/URLs to delete specific images
-      // 2. deleteAllImages: Boolean to delete all existing images
-      // 3. replaceImages: Boolean to replace all images with newly uploaded ones (default: false, adds to existing)
-      // 4. New images (req.files): By default, adds to existing images unless replaceImages is true
-      //
-      // Examples:
-      // - Add new images: Upload files without any flags
-      // - Replace all images: Upload files + replaceImages: true
-      // - Delete specific images: deleteSpecificImages: ["image1.jpg", "image2.png"]
-      // - Delete all images: deleteAllImages: true
-      // - Delete some + add new: deleteSpecificImages: ["old.jpg"] + upload new files
-
-      // Handle image operations
-      let currentImages = [];
-      if (existingProduct.images) {
-        try {
-          const parsed = JSON.parse(existingProduct.images);
-          if (Array.isArray(parsed)) {
-            currentImages = parsed;
-          }
-        } catch (e) {
-          console.warn(
-            "Failed to parse existingProduct.images as JSON array:",
-            e
-          );
-          currentImages = [];
-        }
-      }
-      let updatedImages = [...currentImages];
-
-      console.log("=== IMAGE OPERATIONS DEBUG ===");
-      console.log("Initial current images:", currentImages);
-      console.log("Initial updated images:", updatedImages);
-      console.log(
-        "Has files to upload:",
-        !!(req.files && req.files.length > 0)
-      );
-      console.log("Has deleteSpecificImages:", !!data.deleteSpecificImages);
-      console.log("Has deleteAllImages:", !!data.deleteAllImages);
-      console.log("Has replaceImages:", !!data.replaceImages);
-      console.log("================================");
-
-      // Handle specific image deletion first
-      if (data.deleteSpecificImages) {
-        console.log(
-          "deleteSpecificImages received:",
-          data.deleteSpecificImages
-        );
-        console.log("Current images:", currentImages);
-
-        let imagesToDelete = data.deleteSpecificImages;
-
-        // Handle if it's a JSON string
-        if (typeof imagesToDelete === "string") {
+        // ---------- IMAGES ----------
+        let currentImages = [];
+        if (existingProduct.images) {
           try {
-            imagesToDelete = JSON.parse(imagesToDelete);
-          } catch (e) {
-            console.warn("Failed to parse deleteSpecificImages as JSON:", e);
-
-            // If it's not JSON, treat as single string
-            imagesToDelete = [imagesToDelete];
+            const parsed = JSON.parse(existingProduct.images);
+            if (Array.isArray(parsed)) currentImages = parsed;
+          } catch {
+            currentImages = [];
           }
         }
 
-        // Ensure it's an array
-        if (!Array.isArray(imagesToDelete)) {
-          imagesToDelete = [imagesToDelete];
+        let updatedImages = [...currentImages];
+
+        // delete specific images
+        if (data.deleteSpecificImages) {
+          let imagesToDelete = data.deleteSpecificImages;
+
+          if (typeof imagesToDelete === "string") {
+            try {
+              imagesToDelete = JSON.parse(imagesToDelete);
+            } catch {
+              imagesToDelete = [imagesToDelete];
+            }
+          }
+          if (!Array.isArray(imagesToDelete)) imagesToDelete = [imagesToDelete];
+
+          for (const imageToDelete of imagesToDelete) {
+            let idx = updatedImages.findIndex((img) => img === imageToDelete);
+            if (idx === -1)
+              idx = updatedImages.findIndex((img) =>
+                img.includes(imageToDelete),
+              );
+
+            if (idx === -1) {
+              const targetFilename = String(imageToDelete)
+                .split("/")
+                .pop()
+                .split("\\")
+                .pop();
+              idx = updatedImages.findIndex((img) => {
+                const imgFilename = img.split("/").pop().split("\\").pop();
+                return imgFilename === targetFilename;
+              });
+            }
+
+            if (idx !== -1) {
+              await deleteImage(updatedImages[idx]);
+              updatedImages.splice(idx, 1);
+            }
+          }
         }
 
-        console.log("Images to delete (processed):", imagesToDelete);
+        // delete all images
+        if (data.deleteAllImages) {
+          for (const image of updatedImages) await deleteImage(image);
+          updatedImages = [];
+        }
 
-        for (const imageToDelete of imagesToDelete) {
-          console.log("Looking for image to delete:", imageToDelete);
-
-          // Try multiple matching strategies
-          let imageIndex = -1;
-
-          // Strategy 1: Exact match
-          imageIndex = updatedImages.findIndex((img) => img === imageToDelete);
-
-          // Strategy 2: Check if the image path contains the name
-          if (imageIndex === -1) {
-            imageIndex = updatedImages.findIndex((img) =>
-              img.includes(imageToDelete)
-            );
+        // upload new images
+        if (req.files?.length) {
+          const uploadedImages = [];
+          for (const file of req.files) {
+            uploadedImages.push(await uploadImage(file, "/products"));
           }
 
-          // Strategy 3: Check filename only (extract filename from both)
-          if (imageIndex === -1) {
-            const targetFilename = imageToDelete
-              .split("/")
-              .pop()
-              .split("\\")
-              .pop();
-            imageIndex = updatedImages.findIndex((img) => {
-              const imgFilename = img.split("/").pop().split("\\").pop();
-              return imgFilename === targetFilename;
-            });
-          }
-
-          console.log("Found image at index:", imageIndex);
-
-          if (imageIndex !== -1) {
-            console.log("Deleting image:", updatedImages[imageIndex]);
-            // Delete the actual file
-            await deleteImage(updatedImages[imageIndex]);
-            // Remove from array
-            updatedImages.splice(imageIndex, 1);
+          if (data.replaceImages) {
+            for (const oldImage of updatedImages) await deleteImage(oldImage);
+            updatedImages = uploadedImages;
           } else {
-            console.log("Image not found for deletion:", imageToDelete);
+            updatedImages = [...updatedImages, ...uploadedImages];
           }
         }
 
-        console.log("Updated images after deletion:", updatedImages);
-      } else {
-        console.log("No deleteSpecificImages operation");
-      }
-
-      // Handle complete image deletion
-      if (data.deleteAllImages) {
-        console.log("Processing deleteAllImages...");
-        for (const image of updatedImages) {
-          await deleteImage(image);
+        if (JSON.stringify(updatedImages) !== JSON.stringify(currentImages)) {
+          updateData.images = updatedImages.length
+            ? JSON.stringify(updatedImages)
+            : null;
         }
-        updatedImages = [];
-        console.log("All images deleted, updatedImages:", updatedImages);
-      } else {
-        console.log("No deleteAllImages operation");
-      }
 
-      // Handle new image uploads
-      if (req.files && req.files.length > 0) {
-        console.log("Processing file uploads...");
-        const uploadedImages = [];
-        for (const file of req.files) {
-          const imageUrl = await uploadImage(file, "/products");
-          uploadedImages.push(imageUrl);
-          console.log("Uploaded image:", imageUrl);
+        // ✅ update only if changes exist
+        let product = existingProduct;
+        if (Object.keys(updateData).length) {
+          product = await prisma.product.update({
+            where: { id },
+            data: updateData,
+            ...(query ?? []),
+          });
         }
-        console.log("All uploaded images:", uploadedImages);
 
-        if (data.replaceImages) {
-          console.log("Replacing all images with new uploads...");
-          // Replace all existing images with new ones
-          for (const oldImage of updatedImages) {
-            await deleteImage(oldImage);
-          }
-          updatedImages = uploadedImages;
-        } else {
-          console.log("Adding new images to existing ones...");
-          // Add new images to existing ones (default behavior)
-          updatedImages = [...updatedImages, ...uploadedImages];
+        const formattedProduct = parseProductImages(product);
+
+        res.status(200).json({
+          message: getTranslation(lang, "success"),
+          product: formattedProduct,
+        });
+
+        await revalidateDashboard("products");
+
+        // update brand upTo if offer or brand changed
+        const incomingBrandId = updateData.brand_id ?? existingProduct.brand_id;
+        if (
+          ("offer" in updateData && updateData.offer != null) ||
+          ("brand_id" in updateData && updateData.brand_id != null)
+        ) {
+          await updateBrandUpTo(incomingBrandId);
         }
-        console.log("Updated images after upload processing:", updatedImages);
-      } else {
-        console.log("No files to upload");
-      }
 
-      // Update images if there were any changes
-      console.log("=== FINAL IMAGE COMPARISON ===");
-      console.log("Original images:", JSON.stringify(currentImages));
-      console.log("Final updated images:", JSON.stringify(updatedImages));
-      console.log(
-        "Images changed:",
-        JSON.stringify(updatedImages) !== JSON.stringify(currentImages)
-      );
-      console.log("===============================");
+        // ensure brand-category relation exists if both are present
+        const finalBrandId = updateData.brand_id ?? existingProduct.brand_id;
+        const finalCategoryId =
+          updateData.category_id ?? existingProduct.category_id;
 
-      if (JSON.stringify(updatedImages) !== JSON.stringify(currentImages)) {
-        updateData.images =
-          updatedImages.length > 0 ? JSON.stringify(updatedImages) : null;
-        console.log("Images will be updated in database:", updateData.images);
-      } else {
-        console.log("No image changes detected, skipping image update");
-      }
+        if (finalBrandId && finalCategoryId) {
+          await prisma.brandCategory.upsert({
+            where: {
+              brand_id_category_id: {
+                brand_id: finalBrandId,
+                category_id: finalCategoryId,
+              },
+            },
+            update: {},
+            create: {
+              brand_id: finalBrandId,
+              category_id: finalCategoryId,
+            },
+          });
+        }
 
-      // Only update if there are actual changes
-      let product = existingProduct;
-      if (Object.keys(updateData).length > 0) {
-        product = await prisma.product.update({
-          where: { id },
-          data: updateData,
-          ...(query ?? []),
+        await pushNotification({
+          key: {
+            title: "notification_product_updated_title",
+            desc: "notification_product_updated_desc",
+          },
+          args: {
+            title: [],
+            desc: [
+              admin.full_name,
+              formattedProduct.name,
+              formattedProduct.name_ar,
+            ],
+          },
+          lang,
+          users: [],
+          adminUserId: admin.id,
+          data: {
+            navigate: "products",
+            route: `/${lang}/products?id=${formattedProduct.id}`,
+          },
+        });
+      } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+          message: getTranslation(lang, "internalError"),
+          error: error.message,
         });
       }
-      const formattedProduct = parseProductImages(product);
-      res.status(200).json({
-        message: getTranslation(lang, "success"),
-        product: formattedProduct,
-      });
-      await revalidateDashboard("products");
-      if (
-        (existingProduct.offer !== data.offer && data.offer) ||
-        existingProduct.brandId !== data.brandId
-      ) {
-        await updateBrandUpTo(data.brandId);
-      }
-
-      await prisma.brandCategory.upsert({
-        where: {
-          brandId_categoryId: {
-            brandId: data.brandId,
-            categoryId: data.categoryId,
-          },
-        },
-        update: {},
-        create: {
-          brandId: data.brandId,
-          categoryId: data.categoryId,
-        },
-      });
-      await pushNotification({
-        key: {
-          title: "notification_product_updated_title",
-          desc: "notification_product_updated_desc",
-        },
-        args: {
-          title: [],
-          desc: [
-            admin.full_name,
-            formattedProduct.name,
-            formattedProduct.nameAr,
-          ],
-        },
-        lang,
-        users: [],
-        adminUserId: admin.id,
-        data: {
-          navigate: "products",
-          route: `/${lang}/products?id=${formattedProduct.id}`,
-        },
-      });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({
-        message: getTranslation(lang, "internalError"),
-        error: error.message,
-      });
-    }
-  })
-  .delete(authorization(), async (req, res) => {
+    },
+  )
+  .delete(authorization({ roles: ["admin"] }), async (req, res) => {
     const lang = langReq(req);
-    const archived = req.query.archived || false;
     const { id } = req.params;
-    try {
-      const admin = req.user;
-      if (admin?.role != "admin") {
-        return res
-          .status(403)
-          .json({ message: getTranslation(lang, "not_allowed") });
-      }
 
+    // archived=true -> soft delete (deleted_at)
+    const archived = req.query.archived === "true";
+    const permanent = req.query.permanent === "true";
+
+    try {
       const existingProduct = await prisma.product.findUnique({
         where: { id },
       });
 
-      if (!existingProduct)
+      if (!existingProduct) {
         return res
           .status(404)
           .json({ message: getTranslation(lang, "product_not_found") });
+      }
 
-      if (archived) {
+      if (archived && !permanent) {
         await prisma.product.update({
           where: { id },
-          data: { isActive: false },
+          data: {
+            deleted_at: new Date(),
+            is_active: false,
+          },
         });
+
         return res.status(200).json({
           message: getTranslation(lang, "product_archived"),
         });
       }
 
-      // Delete product images before deleting the product
+      // permanent delete: delete images + record
       if (existingProduct.images) {
-        const images = JSON.parse(existingProduct.images);
-        for (const image of images) {
-          await deleteImage(image);
-        }
+        try {
+          const images = JSON.parse(existingProduct.images);
+          if (Array.isArray(images)) {
+            for (const image of images) await deleteImage(image);
+          }
+        } catch {}
       }
 
-      // Delete the product
-      await prisma.product.delete({
-        where: { id },
-      });
+      await prisma.product.delete({ where: { id } });
 
       res.status(200).json({
         message: getTranslation(lang, "product_deleted"),
       });
+
       await revalidateDashboard("products");
     } catch (error) {
       console.error(error);
-      res.status(500).json({
+      return res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });

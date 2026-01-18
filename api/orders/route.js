@@ -33,15 +33,9 @@ const router = express.Router();
 
 router
   .route("/")
-  .get(authorization(), async (req, res) => {
+  .get(authorization({ roles: ["admin"] }), async (req, res) => {
     const lang = langReq(req);
-    const user = req.user;
     try {
-      if (user.role !== "admin")
-        return res
-          .status(403)
-          .json({ message: getTranslation(lang, "forbidden") });
-
       const data = new FeatureApi(req)
         .filter()
         .fields()

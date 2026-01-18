@@ -29,21 +29,20 @@ router.route("/").get(async (req, res) => {
         },
       }),
       prisma.category.findMany({
-        where: { parentId: null },
+        where: { parent_id: null },
         select: {
           id: true,
           name: true,
-          nameAr: true,
-          iconUrl: true,
-          imageUrl: true,
+          name_ar: true,
+          icon_url: true,
+          image_url: true,
           description: true,
-          descriptionAr: true,
+          description_ar: true,
         },
-        orderBy: { id: "asc" }, // Optional: Ensure consistent category order
+        orderBy: { id: "asc" },
       }),
     ]);
 
-    // Handle case where settings might be null (first run app)
     const limits = {
       general: settings?.numberOfProductsOnHomepage || 10,
       featured: settings?.numberOfFeaturedProductsOnHomepage || 10,
@@ -51,59 +50,73 @@ router.route("/").get(async (req, res) => {
       new: settings?.numberOfNewArrivalsOnHomepage || 10,
     };
 
-    // 3. Hydrate Categories with Products
-    // We use Promise.all to process all categories in parallel
+    const now = new Date();
+
+    // 3) Hydrate Categories with Products
     const data = await Promise.all(
       categories.map(async (category) => {
-        // Helper function to generate the query configuration
-        const getQuery = (type) => {
-          const baseWhere = {
-            OR: [
-              { categoryId: category.id },
-              {
-                category: {
-                  parentId: category.id,
-                },
+        const baseWhere = {
+          deleted_at: null,
+          is_active: true,
+          OR: [
+            { category_id: category.id },
+            {
+              category: {
+                parent_id: category.id,
               },
-            ],
-          }; // Filter by THIS category
+            },
+          ],
+        };
 
+        const getQuery = (type) => {
           switch (type) {
             case "featured":
               return {
-                where: { ...baseWhere, isFeatured: true },
+                where: { ...baseWhere, is_featured: true },
                 take: limits.featured,
-                orderBy: { id: "desc" },
+                orderBy: { created_at: "desc" },
                 select,
               };
+
             case "new":
               return {
                 where: { ...baseWhere },
                 take: limits.new,
-                orderBy: { createdAt: "desc" },
+                orderBy: { created_at: "desc" },
                 select,
               };
+
             case "offers":
               return {
-                // Assuming 'offer' is a relation or nullable field based on your snippet
-                where: { ...baseWhere, offer: { not: null } },
+                where: {
+                  ...baseWhere,
+                  offer: { not: null, gt: 0 },
+                  // ✅ OPTIONAL: only show currently valid offers
+                  OR: [
+                    // if no dates exist, still allow (remove this block if you require dates)
+                    { offer_valid_from: null, offer_valid_to: null },
+                    {
+                      offer_valid_from: { lte: now },
+                      offer_valid_to: { gte: now },
+                    },
+                  ],
+                },
                 take: limits.offers,
-                orderBy: { id: "desc" },
+                orderBy: { offer: "desc" },
                 select,
               };
+
             case "general":
             default:
               return {
                 where: { ...baseWhere },
                 take: limits.general,
-                orderBy: { id: "desc" },
+                orderBy: { created_at: "desc" },
                 select,
               };
           }
         };
 
-        // Execute queries conditionally
-        // We run these in parallel for the specific category
         const [featured, newProducts, latestOffers, general] =
           await Promise.all([
             showFeatured ? prisma.product.findMany(getQuery("featured")) : [],
@@ -112,7 +125,6 @@ router.route("/").get(async (req, res) => {
             showGeneral ? prisma.product.findMany(getQuery("general")) : [],
           ]);
 
-        // Return the structured object
         return {
           ...category,
           featured: parseProductsImages(featured),
@@ -120,7 +132,7 @@ router.route("/").get(async (req, res) => {
           latestOffers: parseProductsImages(latestOffers),
           general: parseProductsImages(general),
         };
-      })
+      }),
     );
 
     res.status(200).json({ data, limits });

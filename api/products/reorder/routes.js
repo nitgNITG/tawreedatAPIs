@@ -13,23 +13,16 @@ const productsReorderSchema = z.object({
     .array(
       z.object({
         id: z.uuid(),
-        sortId: z.number().int().min(1),
+        sort_id: z.number().int().min(1),
       }),
     )
     .min(1, "At least one product is required"),
 });
 
-router.post("/", authorization(), async (req, res) => {
+router.post("/", authorization({ roles: ["admin"] }), async (req, res) => {
   const lang = langReq(req);
 
   try {
-    const admin = req.user;
-    if (admin?.role !== "admin") {
-      return res.status(403).json({
-        message: getTranslation(lang, "not_allowed"),
-      });
-    }
-
     // Validate input
     const parsed = productsReorderSchema.safeParse(req.body);
 
@@ -52,13 +45,13 @@ router.post("/", authorization(), async (req, res) => {
 
     // Build SQL
     const caseSql = products
-      .map((product) => `WHEN '${product.id}' THEN ${product.sortId}`)
+      .map((product) => `WHEN '${product.id}' THEN ${product.sort_id}`)
       .join(" ");
     const idsSql = products.map((product) => `'${product.id}'`).join(",");
 
     const rawQuery = `
     UPDATE products
-    SET sortId = CASE id
+    SET sort_id = CASE id
     ${caseSql}
     END
     WHERE id IN (${idsSql});
