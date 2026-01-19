@@ -104,16 +104,18 @@ model UserAddress {
   @@index([userId], map: "Address_userId_fkey")
 }
 
-model Faqs {
-  id        Int       @id @default(autoincrement())
-  question  String
-  answer    String
-  language  Language? @default(EN)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  sortId    Int       @default(0)
+model Faq {
+  id         Int       @id @default(autoincrement())
+  question   String
+  answer     String
+  language   Language? @default(EN)
+  sort_id    Int       @default(0)
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  is_active  Boolean   @default(true)
 
-  @@index([sortId])
+  @@index([sort_id])
+  @@map("faq")
 }
 
 model Category {
@@ -270,8 +272,8 @@ model Product {
 }
 
 enum DiscountType {
-  percent
-  fixed
+  PERCENT
+  FIXED
 }
 
 model ProductAttribute {
@@ -494,64 +496,69 @@ model Ad {
 }
 
 model AboutApp {
-  id               String   @id
-  terms            String?  @db.Text
-  termsAr          String?  @db.Text
-  about            String?  @db.Text
-  aboutAr          String?  @db.Text
-  privacy_policy   String?  @db.Text
-  privacy_policyAr String?  @db.Text
-  mission          String?  @db.Text
-  missionAr        String?  @db.Text
-  vision           String?  @db.Text
-  visionAr         String?  @db.Text
-  digitalCard      String?  @db.Text
-  digitalCardAr    String?  @db.Text
-  phone            String?
-  email            String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  facebook         String?  @db.VarChar(200)
-  instagram        String?  @db.VarChar(200)
-  linkedin         String?  @db.VarChar(200)
-  pinterest        String?  @db.VarChar(200)
-  reddit           String?  @db.VarChar(200)
-  snapchat         String?  @db.VarChar(200)
-  telegram         String?  @db.VarChar(200)
-  tiktok           String?  @db.VarChar(200)
-  twitter          String?  @db.VarChar(200)
-  whatsapp         String?  @db.VarChar(200)
-  youtube          String?  @db.VarChar(200)
+  id                String   @id @default(uuid())
+  terms             String?  @db.Text
+  terms_ar          String?  @db.Text
+  about             String?  @db.Text
+  about_ar          String?  @db.Text
+  privacy_policy    String?  @db.Text
+  privacy_policy_ar String?  @db.Text
+  mission           String?  @db.Text
+  mission_ar        String?  @db.Text
+  vision            String?  @db.Text
+  vision_ar         String?  @db.Text
+  digital_card      String?  @db.Text
+  digital_card_ar   String?  @db.Text
+  phone             String?  @db.VarChar(191)
+  email             String?  @db.VarChar(191)
+  facebook          String?  @db.VarChar(200)
+  instagram         String?  @db.VarChar(200)
+  linkedin          String?  @db.VarChar(200)
+  pinterest         String?  @db.VarChar(200)
+  reddit            String?  @db.VarChar(200)
+  snapchat          String?  @db.VarChar(200)
+  telegram          String?  @db.VarChar(200)
+  tiktok            String?  @db.VarChar(200)
+  twitter           String?  @db.VarChar(200)
+  whatsapp          String?  @db.VarChar(200)
+  youtube           String?  @db.VarChar(200)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@map("about_app")
 }
 
-model ApplicationSettings {
-  id                                 String   @id
-  numberOfProductsOnHomepage         Int      @default(3)
-  numberOfCategoriesOnHomepage       Int      @default(3)
-  numberOfFeaturedProductsOnHomepage Int      @default(10)
-  numberOfLatestOffersOnHomepage     Int      @default(3)
-  numberOfNewArrivalsOnHomepage      Int      @default(3)
-  vat                                Float    @default(5)
-  lastAttempt                        DateTime @default(now())
-  loginAttemptDurationMinutes        Int?     @default(20) @db.SmallInt
-  loginAttempts                      Int?     @default(5) @db.SmallInt
-  createdAt                          DateTime @default(now())
-  updatedAt                          DateTime @updatedAt
-  loginAsGuest                       Boolean  @default(false)
-  permanentDelete                    Boolean  @default(false)
-  numberOfAdsOnHomepage              Int      @default(3)
-  numberOfBrandsOnHomepage           Int      @default(3)
-  app_android_url                    String?
-  app_android_version                String?
-  app_ios_url                        String?
-  app_ios_version                    String?
-  paymob_api_key                     String?  @db.LongText
-  paymob_base_url                    String?
-  paymob_payment_methods             String?
-  paymob_public_key                  String?
-  paymob_secret_key                  String?
-  paymentAttempts                    Int?     @default(5) @db.SmallInt
-  paymob_Iframes                     String?
+model ApplicationSetting {
+  id                                      String   @id
+  number_of_products_on_homepage          Int      @default(3)
+  number_of_categories_on_homepage        Int      @default(3)
+  number_of_featured_products_on_homepage Int      @default(10)
+  number_of_latest_offers_on_homepage     Int      @default(3)
+  number_of_new_arrivals_on_homepage      Int      @default(3)
+  number_of_ads_on_homepage               Int      @default(3)
+  number_of_brands_on_homepage            Int      @default(3)
+  vat                                     Float    @default(5)
+  last_attempt                            DateTime @default(now())
+  login_attempt_duration_minutes          Int?     @default(20) @db.SmallInt
+  login_attempts                          Int?     @default(5) @db.SmallInt
+  login_as_guest                          Boolean  @default(false)
+  permanent_delete                        Boolean  @default(false)
+  app_android_url                         String?
+  app_android_version                     String?
+  app_ios_url                             String?
+  app_ios_version                         String?
+  paymob_api_key                          String?  @db.LongText
+  paymob_base_url                         String?
+  paymob_payment_methods                  String?
+  paymob_public_key                       String?
+  paymob_secret_key                       String?
+  payment_attempts                        Int?     @default(5) @db.SmallInt
+  paymob_iframes                          String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("application_setting")
 }
 
 model OnBoarding {
@@ -571,32 +578,37 @@ model OnBoarding {
 }
 
 model ContactUs {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String
-  message   String   @db.Text
-  response  String?  @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  read      Boolean  @default(false)
+  id         Int       @id @default(autoincrement())
+  name       String
+  email      String
+  message    String    @db.Text
+  response   String?   @db.Text
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  read_at    DateTime?
+  read       Boolean   @default(false)
+
+  @@map("contact_us")
 }
 
 model Article {
-  id          Int      @id @default(autoincrement())
-  title       String   @db.VarChar(255)
-  slug        String   @unique @db.VarChar(255)
-  summary     String?  @db.VarChar(500)
-  content     String   @db.Text
-  coverImage  String?
-  keywords    String?  @db.VarChar(255)
-  publishedAt DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  author      String   @db.VarChar(255)
-  sortId      Int      @default(0)
+  id           Int      @id @default(autoincrement())
+  title        String   @db.VarChar(255)
+  slug         String   @unique @db.VarChar(255)
+  summary      String?  @db.VarChar(500)
+  content      String   @db.Text
+  cover_image  String?
+  keywords     String?  @db.VarChar(255)
+  published_at DateTime
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  author       String   @db.VarChar(255)
+  is_active    Boolean  @default(true)
 
-  @@index([sortId])
-  @@map("Articles")
+  sort_id Int @default(0)
+
+  @@index([sort_id])
+  @@map("article")
 }
 
 model Color {

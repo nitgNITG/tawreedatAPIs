@@ -107,7 +107,7 @@ router
 
       if (homePage) {
         const { numberOfCategoriesOnHomepage } =
-          await prisma.applicationSettings.findFirst({
+          await prisma.applicationSetting.findFirst({
             select: {
               numberOfCategoriesOnHomepage: true,
             },

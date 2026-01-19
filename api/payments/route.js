@@ -70,7 +70,7 @@ router.post("/", authorization(), async (req, res) => {
       });
 
     const attemptsCount = order.paymentAttempts.length;
-    if (attemptsCount >= settings.paymentAttempts) {
+    if (attemptsCount >= settings.payment_attempts) {
       return res.status(429).json({
         message: getTranslation(lang, "paymentAttemptsExceeded"),
       });
@@ -113,7 +113,7 @@ router.post("/", authorization(), async (req, res) => {
         publicKey: settings.paymob_public_key,
         baseUrl: settings.paymob_base_url,
         paymentMethods: settings.paymob_payment_methods,
-        iframes: settings.paymob_Iframes,
+        iframes: settings.paymob_iframes,
       },
     });
 

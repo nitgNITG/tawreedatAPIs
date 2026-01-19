@@ -20,12 +20,12 @@ router.route("/").get(async (req, res) => {
 
     // 2. Fetch Settings and Parent Categories
     const [settings, categories] = await Promise.all([
-      prisma.applicationSettings.findFirst({
+      prisma.applicationSetting.findFirst({
         select: {
-          numberOfProductsOnHomepage: true,
-          numberOfFeaturedProductsOnHomepage: true,
-          numberOfLatestOffersOnHomepage: true,
-          numberOfNewArrivalsOnHomepage: true,
+          number_of_products_on_homepage: true,
+          number_of_featured_products_on_homepage: true,
+          number_of_latest_offers_on_homepage: true,
+          number_of_new_arrivals_on_homepage: true,
         },
       }),
       prisma.category.findMany({
@@ -44,10 +44,10 @@ router.route("/").get(async (req, res) => {
     ]);
 
     const limits = {
-      general: settings?.numberOfProductsOnHomepage || 10,
-      featured: settings?.numberOfFeaturedProductsOnHomepage || 10,
-      offers: settings?.numberOfLatestOffersOnHomepage || 10,
-      new: settings?.numberOfNewArrivalsOnHomepage || 10,
+      general: settings?.number_of_products_on_homepage || 10,
+      featured: settings?.number_of_featured_products_on_homepage || 10,
+      offers: settings?.number_of_latest_offers_on_homepage || 10,
+      new: settings?.number_of_new_arrivals_on_homepage || 10,
     };
 
     const now = new Date();

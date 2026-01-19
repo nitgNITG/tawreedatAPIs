@@ -52,7 +52,7 @@ export const formatData = async (data, preferredLang, model, where) => {
   // Check if we need to convert points to SR for wallet history
   let srRatio = null;
   if (model === "walletHistory" && where?.type === "PAYMENT") {
-    const appSettings = await prisma.applicationSettings.findFirst({
+    const appSettings = await prisma.applicationSetting.findFirst({
       select: { srRatio: true },
     });
     srRatio = appSettings?.srRatio || 10; // Default to 10 if not found
@@ -82,7 +82,7 @@ export const formatData = async (data, preferredLang, model, where) => {
           const arrayValues = value.map((item) =>
             typeof item === "object"
               ? getNestedValue(item, preferredLang)
-              : item
+              : item,
           );
           formattedItem[formattedKey] = arrayValues.length
             ? arrayValues.join(", ")
@@ -124,7 +124,7 @@ export const formatTitle = async (title, where, lang) => {
 
     return {
       title: reverseIfArabic(
-        `${user.full_name} - ${fieldTranslations.orders?.[lang] || title}`
+        `${user.full_name} - ${fieldTranslations.orders?.[lang] || title}`,
       ),
       subTitle: {
         email: user.email,
@@ -145,7 +145,7 @@ export const formatTitle = async (title, where, lang) => {
     return {
       title: reverseIfArabic(
         `${name} - ${fieldTranslations[title]?.[lang] || title}`,
-        lang
+        lang,
       ),
       subTitle: {},
     };
@@ -191,7 +191,7 @@ router.post(
           "No data found for model:",
           model,
           "with criteria:",
-          apiFeatures.where
+          apiFeatures.where,
         );
         return res
           .status(404)
@@ -202,13 +202,13 @@ router.post(
         data,
         lang,
         model,
-        apiFeatures.where
+        apiFeatures.where,
       );
 
       const { title, subTitle } = await formatTitle(
         model,
         apiFeatures.where,
-        lang
+        lang,
       );
 
       if (fileType === "csv") {
@@ -222,7 +222,7 @@ router.post(
           title,
           subTitle,
           lang,
-          res
+          res,
         );
       }
     } catch (error) {
@@ -231,7 +231,7 @@ router.post(
         .status(500)
         .json({ error: "Failed to generate download", details: error.message });
     }
-  }
+  },
 );
 
 export default router;

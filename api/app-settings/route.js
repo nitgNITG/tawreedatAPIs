@@ -26,7 +26,7 @@ const applicationSettingsSchema = (lang) => {
       .number({
         required_error: getTranslation(
           lang,
-          "numberOfFeaturedProductsRequired"
+          "numberOfFeaturedProductsRequired",
         ),
         invalid_type_error: getTranslation(lang, "invalidNumber"),
       })
@@ -59,7 +59,7 @@ const applicationSettingsSchema = (lang) => {
       .number({
         required_error: getTranslation(
           lang,
-          "numberOfBrandsOnHomepageRequired"
+          "numberOfBrandsOnHomepageRequired",
         ),
         invalid_type_error: getTranslation(lang, "invalidNumber"),
       })
@@ -119,17 +119,11 @@ const router = express.Router();
 
 router
   .route("/")
-  .get(authorization(), async (req, res) => {
+  .get(authorization({ roles: ["admin"] }), async (req, res) => {
     const lang = langReq(req);
-    const isAdmin = req.user.role === "admin";
     try {
-      if (!isAdmin)
-        return res
-          .status(403)
-          .json({ message: getTranslation(lang, "forbidden") });
-
       const data = new FeatureApi(req).fields().data;
-      const settings = await prisma.applicationSettings.findFirst(data);
+      const settings = await prisma.applicationSetting.findFirst(data);
 
       if (!settings) {
         return res.status(404).json({
@@ -148,17 +142,11 @@ router
       });
     }
   })
-  .put(authorization(), async (req, res) => {
+  .put(authorization({ roles: ["admin"] }), async (req, res) => {
     const lang = langReq(req);
     try {
-      const admin = req.user;
-      if (admin?.role !== "admin")
-        return res
-          .status(403)
-          .json({ message: getTranslation(lang, "not_authorized") });
-
       const resultValidation = applicationSettingsSchema(lang).safeParse(
-        req.body
+        req.body,
       );
 
       if (!resultValidation.success) {
@@ -167,7 +155,7 @@ router
             resultValidation.error.issues.map((issue) => ({
               path: issue.path,
               message: issue.message,
-            }))
+            })),
           );
         }
 
@@ -180,7 +168,7 @@ router
         });
       }
       const data = resultValidation.data;
-      const settings = await prisma.applicationSettings.upsert({
+      const settings = await prisma.applicationSetting.upsert({
         where: { id: "app-settings" },
         update: data,
         create: { id: "app-settings", ...data },
@@ -202,7 +190,7 @@ router.route("/mobile").get(async (req, res) => {
   const lang = langReq(req);
   try {
     const data = new FeatureApi(req).fields().data;
-    const settings = await prisma.applicationSettings.findFirst(data);
+    const settings = await prisma.applicationSetting.findFirst(data);
 
     if (!settings) {
       return res.status(404).json({
@@ -210,7 +198,7 @@ router.route("/mobile").get(async (req, res) => {
       });
     }
 
-    delete settings.paymob_Iframes;
+    delete settings.paymob_iframes;
     delete settings.paymob_api_key;
     delete settings.paymob_base_url;
     delete settings.paymob_payment_methods;

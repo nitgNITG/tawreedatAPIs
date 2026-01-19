@@ -145,7 +145,7 @@ router
       const user = req.user;
       const id = user.id;
       // Permanent delete
-      const appSettings = await prisma.applicationSettings.findFirst();
+      const appSettings = await prisma.applicationSetting.findFirst();
       const isPermanentDeleteEnabled = appSettings?.permanentDelete || false;
 
       if (isPermanentDeleteEnabled) {

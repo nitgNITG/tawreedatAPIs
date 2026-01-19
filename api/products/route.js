@@ -159,11 +159,9 @@ router
             where: { barcode: data.barcode },
           });
           if (existingBarcode) {
-            return res
-              .status(400)
-              .json({
-                message: getTranslation(lang, "barcode_already_exists"),
-              });
+            return res.status(400).json({
+              message: getTranslation(lang, "barcode_already_exists"),
+            });
           }
         }
 
@@ -261,33 +259,33 @@ router
         ).data;
 
       if (homePage) {
-        const settings = await prisma.applicationSettings.findFirst({
+        const settings = await prisma.applicationSetting.findFirst({
           select: {
-            numberOfProductsOnHomepage: true,
-            numberOfFeaturedProductsOnHomepage: true,
-            numberOfLatestOffersOnHomepage: true,
-            numberOfNewArrivalsOnHomepage: true,
+            number_of_products_on_homepage: true,
+            number_of_featured_products_on_homepage: true,
+            number_of_latest_offers_on_homepage: true,
+            number_of_new_arrivals_on_homepage: true,
           },
         });
 
         const typeConfig = {
           general: {
-            limit: settings?.numberOfProductsOnHomepage,
+            limit: settings?.number_of_products_on_homepage,
             where: {},
             orderBy: { created_at: "desc" },
           },
           featured: {
-            limit: settings?.numberOfFeaturedProductsOnHomepage,
+            limit: settings?.number_of_featured_products_on_homepage,
             where: { is_featured: true },
             orderBy: { created_at: "desc" },
           },
           offers: {
-            limit: settings?.numberOfLatestOffersOnHomepage,
+            limit: settings?.number_of_latest_offers_on_homepage,
             where: { offer: { not: null } },
             orderBy: { created_at: "desc" },
           },
           new: {
-            limit: settings?.numberOfNewArrivalsOnHomepage,
+            limit: settings?.number_of_new_arrivals_on_homepage,
             where: {},
             orderBy: { created_at: "desc" },
           },

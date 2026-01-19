@@ -73,7 +73,7 @@ export const paymentWithPoints = async (req, res) => {
         expired: true,
       },
     });
-    const setting = (await prisma.applicationSettings.findFirst({
+    const setting = (await prisma.applicationSetting.findFirst({
       select: {
         srRatio: true,
         pointBackRatio: true,
@@ -95,7 +95,7 @@ export const paymentWithPoints = async (req, res) => {
       });
     }
     const { totalAvailable, walletHistories } = await calculateWalletPoints(
-      userWallet.id
+      userWallet.id,
     );
 
     // Payment

@@ -73,7 +73,7 @@ export const payment = async (req, res) => {
       },
     });
 
-    const setting = (await prisma.applicationSettings.findFirst({
+    const setting = (await prisma.applicationSetting.findFirst({
       select: {
         srRatio: true,
         pointBackRatio: true,
@@ -137,7 +137,7 @@ export const payment = async (req, res) => {
     //valdiation brand this mean this point will vaild to date.
     const validToBrandPoints = new Date();
     validToBrandPoints.setMonth(
-      validToBrandPoints.getMonth() + session.brandToken.brand.validityPeriod
+      validToBrandPoints.getMonth() + session.brandToken.brand.validityPeriod,
     );
 
     // calculate the brand amount.
@@ -158,7 +158,7 @@ export const payment = async (req, res) => {
       paymentamount: amount,
       validTo: validToBrandPoints,
       validFrom: new Date(
-        new Date().setDate(new Date().getDate() + setting.pointBackValidity)
+        new Date().setDate(new Date().getDate() + setting.pointBackValidity),
       ),
       brandAmount: brandAmount,
       brandId: session.brandToken.brand.id,
@@ -506,7 +506,13 @@ export const payment = async (req, res) => {
       },
       args: {
         title: [user.full_name, amount, session.brandToken.brand.name],
-        desc: [user.full_name, amount, points, session.brandToken.brand.name, walletHistory.validFrom.toISOString().split("T")[0]],
+        desc: [
+          user.full_name,
+          amount,
+          points,
+          session.brandToken.brand.name,
+          walletHistory.validFrom.toISOString().split("T")[0],
+        ],
       },
       lang,
       users: users.BrandRepresentative.map((rep) => ({
