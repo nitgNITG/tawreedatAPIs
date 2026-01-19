@@ -233,6 +233,7 @@ router
             include: {
               role: {
                 select: {
+                  id: true,
                   name: true,
                 },
               },

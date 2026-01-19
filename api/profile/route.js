@@ -116,16 +116,9 @@ router
       const updatedUser = await prisma.user.update({
         where: { id },
         data,
-        include: {
-          role: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
       });
       delete updatedUser.password;
+      delete updatedUser.role_id;
 
       res.status(200).json({
         message: getTranslation(lang, "success"),
