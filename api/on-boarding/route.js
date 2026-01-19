@@ -3,70 +3,75 @@ import getTranslation, { langReq } from "../../middleware/getTranslation.js";
 import authorization from "../../middleware/authorization.js";
 import prisma from "../../prisma/client.js";
 import upload from "../../middleware/upload.js";
-import { z } from "zod";
 import uploadImage from "../../utils/uploadImage.js";
 import FeatureApi from "../../utils/FetchDataApis.js";
+import onBoardingSchema from "../../schemas/onBoarding.schema.js";
 
 const router = express.Router();
-export const onBoardingSchema = (lang) => {
-  return z.object({
-    title: z.string({
-      message: getTranslation(lang, "onBoarding_title_required"),
-    }),
-    titleAr: z.string().optional(),
-    subtitle: z.string().optional(),
-    subtitleAr: z.string().optional(),
-    content: z.string().optional(),
-    contentAr: z.string().optional(),
-  });
-};
+
 router
   .route("/")
-  .post(authorization(), upload.single("imageUrl"), async (req, res) => {
-    const lang = langReq(req);
-    try {
-      const admin = req.user;
-      if (!admin && admin.role !== "admin") {
-        return res
-          .status(401)
-          .json({ message: getTranslation(lang, "not_authorized") });
-      }
-      const resultValidation = onBoardingSchema(lang).safeParse(req.body);
-      if (!resultValidation.success) {
-        return res.status(400).json({
-          message: resultValidation.error.issues[0].message,
-          errors: resultValidation.error.issues.map((issue) => ({
-            path: issue.path,
-            message: issue.message,
-          })),
+  .post(
+    authorization({ roles: ["admin"] }),
+    upload.single("image_url"),
+    async (req, res) => {
+      const lang = langReq(req);
+
+      try {
+        const schema = onBoardingSchema(lang);
+
+        const resultValidation = schema.safeParse(req.body);
+
+        if (!resultValidation.success) {
+          return res.status(400).json({
+            message: resultValidation.error.issues[0].message,
+            errors: resultValidation.error.issues.map((issue) => ({
+              path: issue.path,
+              message: issue.message,
+            })),
+          });
+        }
+
+        const file = req.file;
+        if (!file) {
+          return res.status(400).json({
+            message: getTranslation(lang, "onBoarding_image_required"),
+          });
+        }
+
+        const image_url = await uploadImage(file, `/onboarding/${Date.now()}`);
+
+        const data = resultValidation.data;
+
+        const onBoarding = await prisma.onBoarding.create({
+          data: {
+            title: data.title,
+            title_ar: data.title_ar,
+            subtitle: data.subtitle,
+            subtitle_ar: data.subtitle_ar,
+            content: data.content,
+            content_ar: data.content_ar,
+            sort_id: data.sort_id ?? 0,
+            image_url,
+          },
+        });
+
+        return res.status(201).json({
+          onBoarding,
+          message: getTranslation(lang, "onBoarding_success_created"),
+        });
+      } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+          message: getTranslation(lang, "internalError"),
+          error: error.message,
         });
       }
-      const data = resultValidation.data;
-      const imageUrl = req.file;
-      if (!imageUrl) {
-        return res
-          .status(200)
-          .json({ message: getTranslation(lang, "onBoarding_image_required") });
-      }
-      data.imageUrl = await uploadImage(imageUrl, `/onboarding/${Date.now()}`);
-      const onBoarding = await prisma.onBoarding.create({
-        data,
-      });
-      return res.status(201).json({
-        onBoarding,
-        message: getTranslation(lang, "onBoarding_success_created"),
-      });
-    } catch (error) {
-      console.error(error);
-      res.status(400).json({
-        message: getTranslation(lang, "internalError"),
-        error: error.message,
-      });
-    }
-  })
-
+    },
+  )
   .get(async (req, res) => {
     const lang = langReq(req);
+
     try {
       const data = new FeatureApi(req)
         .fields()
@@ -74,15 +79,17 @@ router
         .skip()
         .sort()
         .limit()
-        .keyword(["title", "content"], "OR").data;
+        .keyword(["title", "content", "subtitle"], "OR").data;
+
       const onBoarding = await prisma.onBoarding.findMany(data);
+
       return res.status(200).json({
         onBoarding,
         message: getTranslation(lang, "success"),
       });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      return res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });

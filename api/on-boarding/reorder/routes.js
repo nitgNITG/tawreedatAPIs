@@ -13,26 +13,17 @@ const OnBoardingReorderSchema = z.object({
     .array(
       z.object({
         id: z.number().int().positive(),
-        sortId: z.number().int().min(1),
+        sort_id: z.number().int().min(1),
       }),
     )
     .min(1, "At least one ad is required"),
 });
 
-router.post("/", authorization(), async (req, res) => {
+router.post("/", authorization({ roles: ["admin"] }), async (req, res) => {
   const lang = langReq(req);
 
   try {
-    const admin = req.user;
-    if (admin?.role !== "admin") {
-      return res.status(403).json({
-        message: getTranslation(lang, "not_allowed"),
-      });
-    }
-
-    // Validate input
     const parsed = OnBoardingReorderSchema.safeParse(req.body);
-
     if (!parsed.success) {
       if (process.env.NODE_ENV === "development") {
         console.log(
@@ -51,14 +42,14 @@ router.post("/", authorization(), async (req, res) => {
     const { OnBoarding } = parsed.data;
 
     // Build SQL
-    const caseSql = OnBoarding.map((o) => `WHEN ${o.id} THEN ${o.sortId}`).join(
-      " ",
-    );
+    const caseSql = OnBoarding.map(
+      (o) => `WHEN ${o.id} THEN ${o.sort_id}`,
+    ).join(" ");
     const idsSql = OnBoarding.map((o) => o.id).join(",");
 
     const rawQuery = `
-      UPDATE OnBoarding
-      SET sortId = CASE id
+      UPDATE on_boarding
+      SET sort_id = CASE id
         ${caseSql}
       END
       WHERE id IN (${idsSql});

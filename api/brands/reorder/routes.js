@@ -50,7 +50,7 @@ router.post("/", authorization({ roles: ["admin"] }), async (req, res) => {
     const idsSql = brands.map((b) => b.id).join(",");
 
     const rawQuery = `
-      UPDATE brands
+      UPDATE brand
       SET sort_id = CASE id
         ${caseSql}
       END

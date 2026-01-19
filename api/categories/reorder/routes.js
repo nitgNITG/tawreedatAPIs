@@ -57,7 +57,7 @@ router.post("/", authorization(), async (req, res) => {
     const idsSql = categories.map((c) => c.id).join(",");
 
     const rawQuery = `
-      UPDATE categories
+      UPDATE category
       SET sort_id = CASE id
         ${caseSql}
       END

@@ -13,8 +13,8 @@ const articlesReorderSchema = z.object({
     .array(
       z.object({
         id: z.number().int().positive(),
-        sortId: z.number().int().min(1),
-      })
+        sort_id: z.number().int().min(1),
+      }),
     )
     .min(1, "At least one ad is required"),
 });
@@ -39,7 +39,7 @@ router.post("/", authorization(), async (req, res) => {
           parsed.error.issues.map((issue) => ({
             path: issue.path,
             message: issue.message,
-          }))
+          })),
         );
       }
       return res.status(400).json({
@@ -52,13 +52,13 @@ router.post("/", authorization(), async (req, res) => {
 
     // Build SQL
     const caseSql = articles
-      .map((article) => `WHEN ${article.id} THEN ${article.sortId}`)
+      .map((article) => `WHEN ${article.id} THEN ${article.sort_id}`)
       .join(" ");
     const idsSql = articles.map((article) => article.id).join(",");
 
     const rawQuery = `
-      UPDATE Articles
-      SET sortId = CASE id
+      UPDATE article
+      SET sort_id = CASE id
         ${caseSql}
       END
       WHERE id IN (${idsSql});

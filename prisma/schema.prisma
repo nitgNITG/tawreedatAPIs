@@ -562,19 +562,21 @@ model ApplicationSetting {
 }
 
 model OnBoarding {
-  id         Int      @id @default(autoincrement())
-  imageUrl   String?
-  title      String
-  titleAr    String?
-  content    String?
-  contentAr  String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  subtitle   String?
-  subtitleAr String?
-  sortId     Int      @default(0)
+  id          Int       @id @default(autoincrement())
+  image_url   String?
+  title       String
+  title_ar    String?
+  content     String?
+  content_ar  String?
+  subtitle    String?
+  subtitle_ar String?
+  sort_id     Int       @default(0)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
 
-  @@index([sortId])
+  @@index([sort_id])
+  @@map("on_boarding")
 }
 
 model ContactUs {
