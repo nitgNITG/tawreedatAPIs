@@ -1,5 +1,5 @@
 import { z } from "zod";
-import getTranslation from "../../middleware/getTranslation.js";
+import getTranslation from "../middleware/getTranslation.js";
 
 const onBoardingSchema = (lang) => {
   return z.object({
