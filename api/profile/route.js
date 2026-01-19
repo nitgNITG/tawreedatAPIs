@@ -118,7 +118,6 @@ router
         data,
       });
       delete updatedUser.password;
-      delete updatedUser.password_last_updated;
 
       res.status(200).json({
         message: getTranslation(lang, "success"),
