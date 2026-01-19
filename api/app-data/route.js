@@ -10,22 +10,22 @@ const router = express.Router();
 const aboutAppSchema = (lang) => {
   return z.object({
     terms: z.string().optional().nullable(),
-    termsAr: z.string().optional().nullable(),
+    terms_ar: z.string().optional().nullable(),
     about: z.string().optional().nullable(),
-    aboutAr: z.string().optional().nullable(),
+    about_ar: z.string().optional().nullable(),
     privacy_policy: z.string().optional().nullable(),
-    privacy_policyAr: z.string().optional().nullable(),
+    privacy_policy_ar: z.string().optional().nullable(),
     mission: z.string().optional().nullable(),
-    missionAr: z.string().optional().nullable(),
+    mission_ar: z.string().optional().nullable(),
     vision: z.string().optional().nullable(),
-    visionAr: z.string().optional().nullable(),
+    vision_ar: z.string().optional().nullable(),
     phone: z
       .string({ message: getTranslation(lang, "invalid_phone") })
       .refine(
         (phone) => {
           return parsePhoneNumber(phone)?.isValid();
         },
-        { message: getTranslation(lang, "invalid_phone") }
+        { message: getTranslation(lang, "invalid_phone") },
       )
       .optional()
       .nullable(),
@@ -33,8 +33,8 @@ const aboutAppSchema = (lang) => {
       .email({ message: getTranslation(lang, "invalid_email") })
       .optional()
       .nullable(),
-    digitalCard: z.string().optional().nullable(),
-    digitalCardAr: z.string().optional().nullable(),
+    digital_card: z.string().optional().nullable(),
+    digital_card_ar: z.string().optional().nullable(),
     facebook: z.string().optional().nullable(),
     twitter: z.string().optional().nullable(),
     instagram: z.string().optional().nullable(),
@@ -48,17 +48,12 @@ const aboutAppSchema = (lang) => {
     reddit: z.string().optional().nullable(),
   });
 };
+
 router
   .route("/")
-  .put(authorization(), async (req, res) => {
+  .put(authorization({ roles: ["admin"] }), async (req, res) => {
     const lang = langReq(req);
     try {
-      const admin = req.user;
-      if (admin?.role !== "admin") {
-        return res
-          .status(403)
-          .json({ message: getTranslation(lang, "not_authorized") });
-      }
       const resultValidation = aboutAppSchema(lang).safeParse(req.body);
       if (!resultValidation.success) {
         return res.status(400).json({
