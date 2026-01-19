@@ -16,7 +16,7 @@ const isLocked = (
   attempts = 5,
   times = 0,
   lastAttempt = new Date(),
-  duration = 20
+  duration = 20,
 ) => attempts <= times && !isExpired(lastAttempt, duration);
 
 const userSchema = (lang) => {
@@ -164,7 +164,7 @@ router.post("/", async (req, res) => {
 
     const token = jwt.sign(
       { userId: user.id, role: user?.role?.name },
-      process.env.SECRET_KEY
+      process.env.SECRET_KEY,
     );
 
     if (!user.is_confirmed)

@@ -117,19 +117,12 @@ router
         where: { id },
         data,
       });
+      delete updatedUser.password;
+      delete updatedUser.password_last_updated;
 
       res.status(200).json({
         message: getTranslation(lang, "success"),
-        updatedUser: {
-          id: updatedUser.id,
-          full_name: updatedUser.full_name,
-          email: updatedUser.email,
-          phone: updatedUser.phone,
-          birth_date: updatedUser.birth_date,
-          gender: updatedUser.gender,
-          image_url: updatedUser.image_url,
-          lang: updatedUser.lang,
-        },
+        updatedUser,
       });
     } catch (error) {
       console.error(error);
