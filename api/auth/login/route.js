@@ -89,7 +89,7 @@ router.post("/", async (req, res) => {
         .status(400)
         .json({ message: getTranslation(lang, "user_not_found") });
 
-    if (!user.is_Active)
+    if (!user.is_active)
       return res
         .status(400)
         .json({ message: getTranslation(lang, "user_isBlocked") });
@@ -97,7 +97,7 @@ router.post("/", async (req, res) => {
     if (!user.password && user.login_type !== "LOCAL") {
       return res.status(400).json({
         message: getTranslation(lang, "wrong_login_type"),
-        loginType: user.loginType,
+        loginType: user.login_type,
       });
     }
 

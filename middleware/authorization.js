@@ -63,7 +63,7 @@ const authorization =
           .json({ message: getTranslation(lang, "user_not_found") });
       }
 
-      // if (!user.is_Active) {
+      // if (!user.is_active) {
       //   return res
       //     .status(403)
       //     .json({ message: getTranslation(lang, "user_isBlocked") });
