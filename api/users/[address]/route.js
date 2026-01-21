@@ -3,65 +3,38 @@ import getTranslation, { langReq } from "../../../middleware/getTranslation.js";
 import authorization from "../../../middleware/authorization.js";
 import prisma from "../../../prisma/client.js";
 import FeatureApi from "../../../utils/FetchDataApis.js";
-import { z } from "zod";
-import { checkUserExists } from "../../../utils/checkUserExists.js"; // <-- import
-
-export const userAddressSchema = (lang) => {
-  return z.object({
-    name: z.string({
-      required_error: getTranslation(lang, "address_name_required"),
-    }),
-    address: z.string({
-      required_error: getTranslation(lang, "address_required"),
-    }),
-    lat: z.string({
-      required_error: getTranslation(lang, "lat_required"),
-    }),
-    long: z.string({
-      required_error: getTranslation(lang, "long_required"),
-    }),
-    city: z.string().optional(),
-    state: z.string().optional(),
-    country: z.string().optional(),
-    postalCode: z.string().optional(),
-    notes: z.string().optional(),
-    isDefault: z.boolean().optional(),
-    buildingNo: z.string().optional(),
-    floorNo: z.string().optional(),
-    apartmentNo: z.string().optional(),
-  });
-};
+import { ensureCustomerOr404 } from "../../../utils/checkUserExists.js"; // <-- import
+import { customerAddressSchema } from "../../../schemas/user_address.schema.js";
 
 const router = express.Router();
 
 // GET all addresses
 router
   .route("/:id/addresses")
-  .get(authorization(), async (req, res) => {
+  .get(authorization({ roles: ["admin"] }), async (req, res) => {
     const lang = langReq(req);
-    const { id } = req.params;
+    const { id: userId } = req.params;
 
     try {
-      const user = req.user;
-      if (user?.role !== "admin") {
+      // ✅ must be customer
+      const customerCheck = await ensureCustomerOr404(lang, userId);
+      if (!customerCheck.ok) {
         return res
-          .status(403)
-          .json({ message: getTranslation(lang, "not_allowed") });
+          .status(customerCheck.status)
+          .json({ message: customerCheck.message });
       }
 
-      const userExists = await checkUserExists(id);
-      if (!userExists) {
-        return res
-          .status(404)
-          .json({ message: getTranslation(lang, "user_not_found") });
-      }
+      // FeatureApi filter now uses customer_id
+      const data = new FeatureApi(req)
+        .fields()
+        .filter({ customer_id: userId }).data;
 
-      const data = new FeatureApi(req).fields().filter({ userId: id }).data;
-      const addresses = await prisma.userAddress.findMany(data);
+      const addresses = await prisma.customerAddress.findMany(data);
 
-      return res
-        .status(200)
-        .json({ message: getTranslation(lang, "success"), addresses });
+      return res.status(200).json({
+        message: getTranslation(lang, "success"),
+        addresses,
+      });
     } catch (error) {
       console.error(error);
       return res.status(500).json({
@@ -70,26 +43,21 @@ router
       });
     }
   })
-  .post(authorization(), async (req, res) => {
+
+  .post(authorization({ roles: ["admin"] }), async (req, res) => {
     const lang = langReq(req);
     const { id: userId } = req.params;
 
     try {
-      const user = req.user;
-      if (user.role !== "admin") {
+      // ✅ must be customer
+      const customerCheck = await ensureCustomerOr404(lang, userId);
+      if (!customerCheck.ok) {
         return res
-          .status(403)
-          .json({ message: getTranslation(lang, "not_allowed") });
+          .status(customerCheck.status)
+          .json({ message: customerCheck.message });
       }
 
-      const userExists = await checkUserExists(userId);
-      if (!userExists) {
-        return res
-          .status(404)
-          .json({ message: getTranslation(lang, "user_not_found") });
-      }
-
-      const validation = userAddressSchema(lang).safeParse(req.body);
+      const validation = customerAddressSchema(lang).safeParse(req.body);
       if (!validation.success) {
         return res.status(400).json({
           message: validation.error.issues[0].message,
@@ -99,27 +67,33 @@ router
 
       const data = validation.data;
 
-      const existingCount = await prisma.userAddress.count({
-        where: { userId },
+      const existingCount = await prisma.customerAddress.count({
+        where: { customer_id: userId },
       });
-      const shouldBeDefault = data.isDefault === true || existingCount === 0;
+
+      const shouldBeDefault = data.is_default === true || existingCount === 0;
 
       const address = await prisma.$transaction(async (tx) => {
         if (shouldBeDefault) {
-          await tx.userAddress.updateMany({
-            where: { userId, isDefault: true },
-            data: { isDefault: false },
+          await tx.customerAddress.updateMany({
+            where: { customer_id: userId, is_default: true },
+            data: { is_default: false },
           });
         }
 
-        return tx.userAddress.create({
-          data: { ...data, userId, isDefault: shouldBeDefault },
+        return tx.customerAddress.create({
+          data: {
+            ...data,
+            customer_id: userId,
+            is_default: shouldBeDefault,
+          },
         });
       });
 
-      return res
-        .status(201)
-        .json({ message: getTranslation(lang, "success"), address });
+      return res.status(201).json({
+        message: getTranslation(lang, "success"),
+        address,
+      });
     } catch (error) {
       console.error(error);
       return res.status(500).json({
@@ -132,30 +106,24 @@ router
 // GET, PUT, DELETE single address
 router
   .route("/:id/addresses/:addressId")
-  .get(authorization(), async (req, res) => {
+  .get(authorization({ roles: ["admin"] }), async (req, res) => {
     const lang = langReq(req);
     const userId = req.params.id;
-    const addressId = +req.params.addressId;
+    const addressId = Number(req.params.addressId);
 
     try {
-      const user = req.user;
-      if (user?.role !== "admin") {
+      const customerCheck = await ensureCustomerOr404(lang, userId);
+      if (!customerCheck.ok) {
         return res
-          .status(403)
-          .json({ message: getTranslation(lang, "not_allowed") });
-      }
-
-      const userExists = await checkUserExists(userId);
-      if (!userExists) {
-        return res
-          .status(404)
-          .json({ message: getTranslation(lang, "user_not_found") });
+          .status(customerCheck.status)
+          .json({ message: customerCheck.message });
       }
 
       const data = new FeatureApi(req)
         .fields()
-        .filter({ userId, id: addressId }).data;
-      const address = await prisma.userAddress.findFirst(data);
+        .filter({ customer_id: userId, id: addressId }).data;
+
+      const address = await prisma.customerAddress.findFirst(data);
 
       if (!address) {
         return res
@@ -174,27 +142,23 @@ router
       });
     }
   })
-  .put(authorization(), async (req, res) => {
+
+  .put(authorization({ roles: ["admin"] }), async (req, res) => {
     const lang = langReq(req);
     const userId = req.params.id;
-    const addressId = +req.params.addressId;
+    const addressId = Number(req.params.addressId);
 
     try {
-      const user = req.user;
-      if (user.role !== "admin") {
+      const customerCheck = await ensureCustomerOr404(lang, userId);
+      if (!customerCheck.ok) {
         return res
-          .status(403)
-          .json({ message: getTranslation(lang, "not_allowed") });
+          .status(customerCheck.status)
+          .json({ message: customerCheck.message });
       }
 
-      const userExists = await checkUserExists(userId);
-      if (!userExists) {
-        return res
-          .status(404)
-          .json({ message: getTranslation(lang, "user_not_found") });
-      }
-
-      const validation = userAddressSchema(lang).partial().safeParse(req.body);
+      const validation = customerAddressSchema(lang)
+        .partial()
+        .safeParse(req.body);
       if (!validation.success) {
         return res.status(400).json({
           message: validation.error.issues[0].message,
@@ -204,8 +168,8 @@ router
 
       const data = validation.data;
 
-      const existingAddress = await prisma.userAddress.findFirst({
-        where: { id: addressId, userId },
+      const existingAddress = await prisma.customerAddress.findFirst({
+        where: { id: addressId, customer_id: userId },
       });
 
       if (!existingAddress) {
@@ -215,14 +179,17 @@ router
       }
 
       const address = await prisma.$transaction(async (tx) => {
-        if (data.isDefault === true) {
-          await tx.userAddress.updateMany({
-            where: { userId, isDefault: true },
-            data: { isDefault: false },
+        if (data.is_default === true) {
+          await tx.customerAddress.updateMany({
+            where: { customer_id: userId, is_default: true },
+            data: { is_default: false },
           });
         }
 
-        return tx.userAddress.update({ where: { id: addressId }, data });
+        return tx.customerAddress.update({
+          where: { id: addressId },
+          data,
+        });
       });
 
       return res
@@ -236,27 +203,32 @@ router
       });
     }
   })
-  .delete(authorization(), async (req, res) => {
+
+  .delete(authorization({ roles: ["admin"] }), async (req, res) => {
     const lang = langReq(req);
     const userId = req.params.id;
-    const addressId = +req.params.addressId;
-
+    const addressId = Number(req.params.addressId);
     try {
-      const user = req.user;
-      if (user?.role !== "admin") {
+      const customerCheck = await ensureCustomerOr404(lang, userId);
+      if (!customerCheck.ok) {
         return res
-          .status(403)
-          .json({ message: getTranslation(lang, "not_allowed") });
+          .status(customerCheck.status)
+          .json({ message: customerCheck.message });
       }
 
-      const userExists = await checkUserExists(userId);
-      if (!userExists) {
+      // ✅ NOTE: Prisma delete needs unique selector (id only), so verify ownership first
+      const existingAddress = await prisma.customerAddress.findFirst({
+        where: { id: addressId, customer_id: userId },
+        select: { id: true },
+      });
+
+      if (!existingAddress) {
         return res
           .status(404)
-          .json({ message: getTranslation(lang, "user_not_found") });
+          .json({ message: getTranslation(lang, "address_not_found") });
       }
 
-      await prisma.userAddress.delete({ where: { id: addressId, userId } });
+      await prisma.customerAddress.delete({ where: { id: addressId } });
 
       return res.status(200).json({ message: getTranslation(lang, "success") });
     } catch (error) {

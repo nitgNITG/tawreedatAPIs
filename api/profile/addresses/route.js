@@ -3,37 +3,8 @@ import getTranslation, { langReq } from "../../../middleware/getTranslation.js";
 import authorization from "../../../middleware/authorization.js";
 import prisma from "../../../prisma/client.js";
 import FeatureApi from "../../../utils/FetchDataApis.js";
-import { z } from "zod";
-
-export const userAddressSchema = (lang) => {
-  return z.object({
-    name: z.string({
-      required_error: getTranslation(lang, "address_name_required"),
-    }),
-
-    address: z.string({
-      required_error: getTranslation(lang, "address_required"),
-    }),
-
-    lat: z.string({
-      required_error: getTranslation(lang, "lat_required"),
-    }),
-
-    long: z.string({
-      required_error: getTranslation(lang, "long_required"),
-    }),
-
-    city: z.string().optional(),
-    state: z.string().optional(),
-    country: z.string().optional(),
-    postalCode: z.string().optional(),
-    notes: z.string().optional(),
-    isDefault: z.boolean().optional(),
-    buildingNo: z.string().optional(),
-    floorNo: z.string().optional(),
-    apartmentNo: z.string().optional(),
-  });
-};
+import { customerAddressSchema } from "../../../schemas/user_address.schema.js";
+import { ensureCustomerOr404 } from "../../../utils/checkUserExists.js";
 
 const router = express.Router();
 
@@ -43,15 +14,27 @@ router
     const lang = langReq(req);
     try {
       const userId = req.user.id;
-      const data = new FeatureApi(req).fields().filter({ userId }).data;
-      const addresses = await prisma.userAddress.findMany(data);
 
-      res
+      // ✅ must be customer
+      const customerCheck = await ensureCustomerOr404(lang, userId);
+      if (!customerCheck.ok) {
+        return res
+          .status(customerCheck.status)
+          .json({ message: customerCheck.message });
+      }
+
+      const data = new FeatureApi(req)
+        .fields()
+        .filter({ customer_id: userId }).data;
+
+      const addresses = await prisma.customerAddress.findMany(data);
+
+      return res
         .status(200)
         .json({ message: getTranslation(lang, "success"), addresses });
     } catch (error) {
       console.error(error);
-      res.status(500).json({
+      return res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
@@ -59,10 +42,18 @@ router
   })
   .post(authorization(), async (req, res) => {
     const lang = langReq(req);
-
     try {
       const userId = req.user.id;
-      const validation = userAddressSchema(lang).safeParse(req.body);
+
+      // ✅ must be customer
+      const customerCheck = await ensureCustomerOr404(lang, userId);
+      if (!customerCheck.ok) {
+        return res
+          .status(customerCheck.status)
+          .json({ message: customerCheck.message });
+      }
+
+      const validation = customerAddressSchema(lang).safeParse(req.body);
       if (!validation.success) {
         return res.status(400).json({
           message: validation.error.issues[0].message,
@@ -72,25 +63,25 @@ router
 
       const data = validation.data;
 
-      const existingCount = await prisma.userAddress.count({
-        where: { userId },
+      const existingCount = await prisma.customerAddress.count({
+        where: { customer_id: userId },
       });
 
-      const shouldBeDefault = data.isDefault === true || existingCount === 0;
+      const shouldBeDefault = data.is_default === true || existingCount === 0;
 
       const address = await prisma.$transaction(async (tx) => {
         if (shouldBeDefault) {
-          await tx.userAddress.updateMany({
-            where: { userId, isDefault: true },
-            data: { isDefault: false },
+          await tx.customerAddress.updateMany({
+            where: { customer_id: userId, is_default: true },
+            data: { is_default: false },
           });
         }
 
-        return tx.userAddress.create({
+        return tx.customerAddress.create({
           data: {
             ...data,
-            userId,
-            isDefault: shouldBeDefault,
+            customer_id: userId,
+            is_default: shouldBeDefault,
           },
         });
       });
@@ -112,18 +103,29 @@ router
   .route("/:addressId")
   .get(authorization(), async (req, res) => {
     const lang = langReq(req);
-    const addressId = +req.params.addressId;
+    const addressId = Number(req.params.addressId);
+
     try {
       const userId = req.user.id;
+
+      // ✅ must be customer
+      const customerCheck = await ensureCustomerOr404(lang, userId);
+      if (!customerCheck.ok) {
+        return res
+          .status(customerCheck.status)
+          .json({ message: customerCheck.message });
+      }
+
       const data = new FeatureApi(req)
         .fields()
-        .filter({ userId, id: addressId }).data;
+        .filter({ customer_id: userId, id: addressId }).data;
 
-      const address = await prisma.userAddress.findFirst(data);
+      const address = await prisma.customerAddress.findFirst(data);
+
       if (!address) {
-        return res.status(404).json({
-          message: getTranslation(lang, "address_not_found"),
-        });
+        return res
+          .status(404)
+          .json({ message: getTranslation(lang, "address_not_found") });
       }
 
       return res
@@ -137,14 +139,26 @@ router
       });
     }
   })
+
+  // PUT update single address for current user
   .put(authorization(), async (req, res) => {
     const lang = langReq(req);
-    const addressId = +req.params.addressId;
+    const addressId = Number(req.params.addressId);
 
     try {
       const userId = req.user.id;
-      const validation = userAddressSchema(lang).partial().safeParse(req.body);
 
+      // ✅ must be customer
+      const customerCheck = await ensureCustomerOr404(lang, userId);
+      if (!customerCheck.ok) {
+        return res
+          .status(customerCheck.status)
+          .json({ message: customerCheck.message });
+      }
+
+      const validation = customerAddressSchema(lang)
+        .partial()
+        .safeParse(req.body);
       if (!validation.success) {
         return res.status(400).json({
           message: validation.error.issues[0].message,
@@ -154,34 +168,33 @@ router
 
       const data = validation.data;
 
-      const existingAddress = await prisma.userAddress.findFirst({
-        where: { id: addressId, userId },
+      const existingAddress = await prisma.customerAddress.findFirst({
+        where: { id: addressId, customer_id: userId },
       });
 
       if (!existingAddress) {
-        return res.status(404).json({
-          message: getTranslation(lang, "address_not_found"),
-        });
+        return res
+          .status(404)
+          .json({ message: getTranslation(lang, "address_not_found") });
       }
 
       const address = await prisma.$transaction(async (tx) => {
-        if (data.isDefault === true) {
-          await tx.userAddress.updateMany({
-            where: { userId, isDefault: true },
-            data: { isDefault: false },
+        if (data.is_default === true) {
+          await tx.customerAddress.updateMany({
+            where: { customer_id: userId, is_default: true },
+            data: { is_default: false },
           });
         }
 
-        return tx.userAddress.update({
+        return tx.customerAddress.update({
           where: { id: addressId },
           data,
         });
       });
 
-      return res.status(200).json({
-        message: getTranslation(lang, "success"),
-        address,
-      });
+      return res
+        .status(200)
+        .json({ message: getTranslation(lang, "success"), address });
     } catch (error) {
       console.error(error);
       return res.status(500).json({
@@ -190,24 +203,35 @@ router
       });
     }
   })
+
+  // DELETE single address for current user
   .delete(authorization(), async (req, res) => {
     const lang = langReq(req);
-    const addressId = +req.params.addressId;
+    const addressId = Number(req.params.addressId);
+
     try {
       const userId = req.user.id;
-      const address = await prisma.userAddress.findFirst({
-        where: { id: addressId, userId },
-      });
 
-      if (!address) {
-        return res.status(404).json({
-          message: getTranslation(lang, "address_not_found"),
-        });
+      // ✅ must be customer
+      const customerCheck = await ensureCustomerOr404(lang, userId);
+      if (!customerCheck.ok) {
+        return res
+          .status(customerCheck.status)
+          .json({ message: customerCheck.message });
       }
 
-      await prisma.userAddress.delete({
-        where: { id: addressId },
+      const existingAddress = await prisma.customerAddress.findFirst({
+        where: { id: addressId, customer_id: userId },
+        select: { id: true },
       });
+
+      if (!existingAddress) {
+        return res
+          .status(404)
+          .json({ message: getTranslation(lang, "address_not_found") });
+      }
+
+      await prisma.customerAddress.delete({ where: { id: addressId } });
 
       return res.status(200).json({ message: getTranslation(lang, "success") });
     } catch (error) {

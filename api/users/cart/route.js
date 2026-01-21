@@ -5,184 +5,225 @@ import prisma from "../../../prisma/client.js";
 import { z } from "zod";
 import FeatureApi from "../../../utils/FetchDataApis.js";
 import { parseProductImages } from "../../../utils/productImages.js";
+import { ensureCustomerCart } from "../../../utils/checkUserExists.js";
 
 const router = express.Router();
 
-// Cart item schema for validation
-const cartItemCreateSchema = (lang) => {
-  return z.object({
-    productId: z
-      .string({ message: getTranslation(lang, "product_id_required") })
-      .min(1, { message: getTranslation(lang, "product_id_required") }),
+// ---- validation ----
+const cartItemCreateSchema = (lang) =>
+  z.object({
+    unit_id: z
+      .union([z.string().transform((v) => Number.parseInt(v, 10)), z.number()])
+      .refine((v) => Number.isInteger(v) && v > 0, {
+        message: getTranslation(lang, "unit_id_required"),
+      }),
     quantity: z
-      .union([z.string().transform((val) => Number.parseInt(val)), z.number()])
-      .refine((val) => !Number.isNaN(val) && val > 0, {
+      .union([z.string().transform((v) => Number.parseInt(v, 10)), z.number()])
+      .refine((v) => Number.isInteger(v) && v > 0, {
         message: getTranslation(lang, "quantity_must_be_positive"),
       }),
   });
-};
 
-const cartItemUpdateSchema = (lang) => {
-  return z.object({
+const cartItemUpdateSchema = (lang) =>
+  z.object({
+    unit_id: z
+      .union([z.string().transform((v) => Number.parseInt(v, 10)), z.number()])
+      .refine((v) => Number.isInteger(v) && v > 0, {
+        message: getTranslation(lang, "unit_id_required"),
+      }),
+    action: z.enum(["increment", "decrement", "set"], {
+      message: getTranslation(lang, "invalid_action"),
+    }),
     quantity: z
-      .union([z.string().transform((val) => Number.parseInt(val)), z.number()])
-      .refine((val) => !Number.isNaN(val) && val > 0, {
+      .union([z.string().transform((v) => Number.parseInt(v, 10)), z.number()])
+      .refine((v) => Number.isInteger(v) && v >= 0, {
         message: getTranslation(lang, "quantity_must_be_positive"),
       }),
   });
-};
 
+// ----------------------
+// GET /cart-items
+// ----------------------
 router
   .route("/")
   .get(authorization(), async (req, res) => {
     const lang = langReq(req);
+
     try {
       const userId = req.user.id;
+
+      const customerCart = await ensureCustomerCart(lang, userId);
+      if (!customerCart.ok) {
+        return res
+          .status(customerCart.status)
+          .json({ message: customerCart.message });
+      }
+
+      const cart_id = customerCart.cart.id;
+
+      // Use FeatureApi but ensure we include product + unit (important)
       const data = new FeatureApi(req)
-        .fields(
-          "id,quantity,createdAt,product=id-name-price-images-offer-offerValidFrom-offerValidTo"
-        )
-        .filter({ userId })
+        .fields("id,cart_id,quantity,product=id-name-name_ar-images,unit")
+        .filter({ cart_id })
         .sort().data;
 
+      // If FeatureApi didn't include relations, force include for correct response
       const cartItems = await prisma.cartItem.findMany(data);
 
-      let formattedCartItems = cartItems;
-      if (data.select?.product) {
-        // 1. Process images AND determine the final price for each item
-        formattedCartItems = formattedCartItems.map((item) => {
-          const productWithImages = parseProductImages(item.product);
+      const formattedCartItems = cartItems.map((item) => {
+        const product = parseProductImages(item.product);
+        const unitPrice = Number(item.unit?.price ?? 0);
 
-          let currentPrice = productWithImages.price; // Default to base price
+        return {
+          ...item,
+          product,
+          unit: item.unit,
+          unit_price: unitPrice,
+          line_total: unitPrice * item.quantity,
+        };
+      });
 
-          // Check if offer exists and dates are valid
-          if (
-            productWithImages.offer &&
-            productWithImages.offerValidFrom &&
-            productWithImages.offerValidTo
-          ) {
-            const now = new Date();
-            const validFrom = new Date(productWithImages.offerValidFrom);
-            const validTo = new Date(productWithImages.offerValidTo);
-
-            // Check if the current date is within the valid range
-            if (now >= validFrom && now <= validTo) {
-              // Offer is valid, calculate the discounted price
-              const discountAmount =
-                (productWithImages.price * productWithImages.offer) / 100;
-              currentPrice = productWithImages.price - discountAmount;
-              // Ensure price is positive
-              if (currentPrice < 0) currentPrice = 0;
-            }
-          }
-
-          // Return the item with the final calculated price added as a new property
-          // The original price remains available inside item.product.price
-          return {
-            ...item,
-            finalPrice: currentPrice,
-            product: productWithImages,
-            // Add a specific field to the cart item response for the price used in total calculations
-          };
-        });
-      }
-
-      // Calculate cart totals
-      let cartSummary = {
-        totalItems: formattedCartItems.reduce(
-          (sum, item) => sum + item.quantity,
-          0
-        ),
+      const cartSummary = {
         itemCount: formattedCartItems.length,
-        totalPrice: 0, // Initialize total price
+        totalItems: formattedCartItems.reduce(
+          (sum, it) => sum + it.quantity,
+          0,
+        ),
+        totalPrice: formattedCartItems.reduce(
+          (sum, it) => sum + it.line_total,
+          0,
+        ),
       };
 
-      if (formattedCartItems.length > 0) {
-        // 2. Use the new 'finalPrice' field for accurate total calculation
-        cartSummary.totalPrice = formattedCartItems.reduce(
-          (sum, item) =>
-            sum + (item.finalPrice ?? item?.product.price) * item.quantity,
-          0
-        );
-      }
-
-      res.status(200).json({
+      return res.status(200).json({
         message: getTranslation(lang, "success"),
         cartItems: formattedCartItems,
         cartSummary,
       });
     } catch (error) {
       console.error(error);
-      res.status(500).json({
+      return res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
     }
   })
+
+  // ----------------------
+  // POST /cart-items
+  // body: { unit_id, quantity }
+  // (If exists => increment)
+  // ----------------------
   .post(authorization(), async (req, res) => {
     const lang = langReq(req);
+
     try {
       const userId = req.user.id;
-      const query = new FeatureApi(req).fields().data;
-      const resultValidation = cartItemCreateSchema(lang).safeParse(req.body);
-
-      if (!resultValidation.success) {
+      const validation = cartItemCreateSchema(lang).safeParse(req.body);
+      if (!validation.success) {
         return res.status(400).json({
-          message: resultValidation.error.issues[0].message,
-          errors: resultValidation.error.issues.map((issue) => ({
-            path: issue.path,
-            message: issue.message,
-          })),
+          message: validation.error.issues[0].message,
+          errors: validation.error.issues,
         });
       }
 
-      const { productId, quantity } = resultValidation.data;
+      const { unit_id, quantity } = validation.data;
 
-      // Check if item already exists in cart
-      const existingCartItem = await prisma.cartItem.findUnique({
-        where: { userId_productId: { userId, productId } },
-      });
-
-      if (existingCartItem) {
-        return res.status(409).json({
-          message: getTranslation(lang, "product_already_in_cart"),
-          suggestion: getTranslation(lang, "use_put_to_update"),
-        });
+      const customerCart = await ensureCustomerCart(lang, userId);
+      if (!customerCart.ok) {
+        return res
+          .status(customerCart.status)
+          .json({ message: customerCart.message });
       }
 
-      // Validate product and stock in a transaction
+      const cart_id = customerCart.cart.id;
+
       const result = await prisma.$transaction(async (tx) => {
-        const product = await tx.product.findUnique({
-          where: { id: productId, isActive: true },
-          select: { stock: true },
+        // ✅ unit must exist and connect to product (and product must be active + not deleted)
+        const unit = await tx.productUnit.findUnique({
+          where: { id: unit_id },
+          select: {
+            id: true,
+            price: true,
+            product: {
+              select: {
+                id: true,
+                stock: true,
+                is_active: true,
+                deleted_at: true,
+              },
+            },
+          },
         });
 
-        if (!product) {
-          throw new Error("PRODUCT_NOT_FOUND");
+        if (
+          !unit ||
+          !unit.product ||
+          unit.product.is_active !== true ||
+          unit.product.deleted_at !== null
+        ) {
+          throw new Error("UNIT_NOT_FOUND");
         }
 
-        if (product.stock === 0) {
+        if (unit.product.stock <= 0) {
           throw new Error("INSUFFICIENT_STOCK");
         }
 
-        const finalQuantity = Math.min(quantity, product.stock);
-        const hasWarning = finalQuantity < quantity;
+        // ✅ Upsert: create new or increment existing
+        // - create quantity is clamped immediately
+        // - update uses increment (atomic) then we clamp if exceeded stock
+        let cartItem = await tx.cartItem.upsert({
+          where: { cart_id_unit_id: { cart_id, unit_id } },
+          create: {
+            cart_id,
+            unit_id,
+            product_id: unit.product.id,
+            quantity: Math.min(quantity, unit.product.stock),
+          },
+          update: {
+            product_id: unit.product.id,
+            quantity: { increment: quantity },
+          },
+          include: { product: true, unit: true },
+        });
 
-        const cartItem = await tx.cartItem.create({
-          data: { userId, productId, quantity: finalQuantity },
-          ...(query ?? []),
+        // ✅ clamp to stock after increment
+        let hasWarning = false;
+        if (cartItem.quantity > unit.product.stock) {
+          hasWarning = true;
+          cartItem = await tx.cartItem.update({
+            where: { id: cartItem.id },
+            data: { quantity: unit.product.stock },
+            include: { product: true, unit: true },
+          });
+        }
+
+        // ✅ update cart total_price (stored)
+        const items = await tx.cartItem.findMany({
+          where: { cart_id },
+          include: { unit: true },
+        });
+
+        const total = items.reduce(
+          (sum, it) => sum + Number(it.unit?.price ?? 0) * it.quantity,
+          0,
+        );
+
+        await tx.cart.update({
+          where: { id: cart_id },
+          data: { total_price: total },
         });
 
         return { cartItem, hasWarning };
       });
 
-      let formattedCartItem = result.cartItem;
-      if (result.cartItem.product) {
-        formattedCartItem = {
-          ...result.cartItem,
-          product: parseProductImages(result.cartItem.product),
-        };
-      }
+      const formattedCartItem = {
+        ...result.cartItem,
+        product: parseProductImages(result.cartItem.product),
+        unit_price: Number(result.cartItem.unit?.price ?? 0),
+        line_total:
+          Number(result.cartItem.unit?.price ?? 0) * result.cartItem.quantity,
+      };
 
       const response = {
         message: getTranslation(lang, "cart_item_added"),
@@ -193,9 +234,9 @@ router
         response.warning = getTranslation(lang, "quantity_adjusted_to_stock");
       }
 
-      res.status(201).json(response);
+      return res.status(201).json(response);
     } catch (error) {
-      if (error.message === "PRODUCT_NOT_FOUND") {
+      if (error.message === "UNIT_NOT_FOUND") {
         return res.status(404).json({
           message: getTranslation(lang, "product_not_found"),
         });
@@ -208,107 +249,132 @@ router
       }
 
       console.error(error);
-      res.status(500).json({
+      return res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
     }
   })
+
+  // ----------------------
+  // PUT /cart-items
+  // body: { unit_id, action, quantity }
+  // ----------------------
   .put(authorization(), async (req, res) => {
     const lang = langReq(req);
+
     try {
       const userId = req.user.id;
-      const query = new FeatureApi(req).fields().data;
-      const resultValidation = z
-        .object({
-          productId: z
-            .string({ message: getTranslation(lang, "product_id_required") })
-            .min(1, { message: getTranslation(lang, "product_id_required") }),
-          action: z.enum(["increment", "decrement", "set"], {
-            message: getTranslation(lang, "invalid_action"),
-          }),
-          quantity: z
-            .union([
-              z.string().transform((val) => Number.parseInt(val)),
-              z.number(),
-            ])
-            .refine((val) => !Number.isNaN(val) && val >= 0, {
-              message: getTranslation(lang, "quantity_must_be_positive"),
-            }),
-        })
-        .safeParse(req.body);
 
-      if (!resultValidation.success) {
+      const validation = cartItemUpdateSchema(lang).safeParse(req.body);
+      if (!validation.success) {
         return res.status(400).json({
-          message: resultValidation.error.issues[0].message,
-          errors: resultValidation.error.issues.map((issue) => ({
-            path: issue.path,
-            message: issue.message,
-          })),
+          message: validation.error.issues[0].message,
+          errors: validation.error.issues,
         });
       }
 
-      const { productId, action, quantity } = resultValidation.data;
+      const { unit_id, action, quantity } = validation.data;
+
+      const customerCart = await ensureCustomerCart(lang, userId);
+      if (!customerCart.ok) {
+        return res
+          .status(customerCart.status)
+          .json({ message: customerCart.message });
+      }
+
+      const cartId = customerCart.cart.id;
 
       const result = await prisma.$transaction(async (tx) => {
-        // Check if cart item exists
-        const existingItem = await tx.cartItem.findUnique({
-          where: { userId_productId: { userId, productId } },
-          select: { id: true, quantity: true },
+        const existing = await tx.cartItem.findUnique({
+          where: { cart_id_unit_id: { cart_id: cartId, unit_id } },
+          select: { id: true, quantity: true, product_id: true },
         });
 
-        if (!existingItem) {
-          throw new Error("CART_ITEM_NOT_FOUND");
-        }
+        if (!existing) throw new Error("CART_ITEM_NOT_FOUND");
 
-        // Check product stock for increment/set operations
-        let product = null;
+        // we need stock if increment/set
+        let stock = null;
         if (action === "increment" || action === "set") {
-          product = await tx.product.findUnique({
-            where: { id: productId, isActive: true },
-            select: { stock: true },
+          const unit = await tx.productUnit.findUnique({
+            where: { id: unit_id },
+            select: {
+              product: {
+                select: { stock: true, is_active: true, deleted_at: true },
+              },
+            },
           });
 
-          if (!product) {
-            throw new Error("PRODUCT_NOT_FOUND");
+          if (
+            !unit ||
+            !unit.product ||
+            unit.product.is_active !== true ||
+            unit.product.deleted_at !== null
+          ) {
+            throw new Error("UNIT_NOT_FOUND");
           }
 
-          if (product.stock === 0) {
-            throw new Error("INSUFFICIENT_STOCK");
-          }
+          stock = unit.product.stock;
+          if (stock <= 0) throw new Error("INSUFFICIENT_STOCK");
         }
 
-        let newQuantity;
-        switch (action) {
-          case "increment":
-            newQuantity = existingItem.quantity + quantity;
-            break;
-          case "decrement":
-            newQuantity = existingItem.quantity - quantity;
-            break;
-          case "set":
-            newQuantity = quantity;
-            break;
-        }
+        let newQuantity = existing.quantity;
 
-        // Handle quantity limits
+        if (action === "increment") newQuantity = existing.quantity + quantity;
+        if (action === "decrement") newQuantity = existing.quantity - quantity;
+        if (action === "set") newQuantity = quantity;
+
+        // delete if <= 0
         if (newQuantity <= 0) {
-          await tx.cartItem.delete({ where: { id: existingItem.id } });
+          await tx.cartItem.delete({ where: { id: existing.id } });
+
+          // update cart total
+          const items = await tx.cartItem.findMany({
+            where: { cart_id: cartId },
+            include: { unit: true },
+          });
+
+          const total = items.reduce(
+            (sum, it) => sum + Number(it.unit?.price ?? 0) * it.quantity,
+            0,
+          );
+
+          await tx.cart.update({
+            where: { id: cartId },
+            data: { total_price: total },
+          });
+
           return { deleted: true };
         }
 
-        // Check stock limit for increment/set operations
-        if ((action === "increment" || action === "set") && product) {
-          newQuantity = Math.min(newQuantity, product.stock);
+        // enforce stock limit
+        if ((action === "increment" || action === "set") && stock != null) {
+          newQuantity = Math.min(newQuantity, stock);
         }
 
-        const updatedItem = await tx.cartItem.update({
-          where: { id: existingItem.id },
+        const updated = await tx.cartItem.update({
+          where: { id: existing.id },
           data: { quantity: newQuantity },
-          ...(query ?? []),
+          include: { product: true, unit: true },
         });
 
-        return { cartItem: updatedItem };
+        // update cart total
+        const items = await tx.cartItem.findMany({
+          where: { cart_id: cartId },
+          include: { unit: true },
+        });
+
+        const total = items.reduce(
+          (sum, it) => sum + Number(it.unit?.price ?? 0) * it.quantity,
+          0,
+        );
+
+        await tx.cart.update({
+          where: { id: cartId },
+          data: { total_price: total },
+        });
+
+        return { cartItem: updated };
       });
 
       if (result.deleted) {
@@ -317,15 +383,15 @@ router
         });
       }
 
-      let formattedCartItem = result.cartItem;
-      if (result.cartItem.product) {
-        formattedCartItem = {
-          ...result.cartItem,
-          product: parseProductImages(result.cartItem.product),
-        };
-      }
+      const formattedCartItem = {
+        ...result.cartItem,
+        product: parseProductImages(result.cartItem.product),
+        unit_price: Number(result.cartItem.unit?.price ?? 0),
+        line_total:
+          Number(result.cartItem.unit?.price ?? 0) * result.cartItem.quantity,
+      };
 
-      res.status(200).json({
+      return res.status(200).json({
         message: getTranslation(lang, "cart_item_updated"),
         cartItem: formattedCartItem,
       });
@@ -336,7 +402,7 @@ router
         });
       }
 
-      if (error.message === "PRODUCT_NOT_FOUND") {
+      if (error.message === "UNIT_NOT_FOUND") {
         return res.status(404).json({
           message: getTranslation(lang, "product_not_found"),
         });
@@ -349,27 +415,45 @@ router
       }
 
       console.error(error);
-      res.status(500).json({
+      return res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
     }
   })
+
+  // ----------------------
+  // DELETE /cart-items  (clear cart)
+  // ----------------------
   .delete(authorization(), async (req, res) => {
     const lang = langReq(req);
+
     try {
       const userId = req.user.id;
 
-      await prisma.cartItem.deleteMany({
-        where: { userId },
+      const customerCart = await ensureCustomerCart(lang, userId);
+      if (!customerCart.ok) {
+        return res
+          .status(customerCart.status)
+          .json({ message: customerCart.message });
+      }
+
+      const cart_id = customerCart.cart.id;
+
+      await prisma.$transaction(async (tx) => {
+        await tx.cartItem.deleteMany({ where: { cart_id } });
+        await tx.cart.update({
+          where: { id: cart_id },
+          data: { total_price: 0 },
+        });
       });
 
-      res.status(200).json({
+      return res.status(200).json({
         message: getTranslation(lang, "cart_cleared"),
       });
     } catch (error) {
       console.error(error);
-      res.status(500).json({
+      return res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });

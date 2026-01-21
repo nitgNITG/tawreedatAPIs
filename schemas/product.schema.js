@@ -13,7 +13,7 @@ export function buildZodSchema(rules) {
 
     switch (rule.type.toLowerCase()) {
       case "string":
-        validator = z.string().transform((val) => String(val));
+        validator = z.string().transform(String);
         break;
       case "number":
         validator = z.union([
@@ -62,6 +62,19 @@ const toDecimal = (v) => {
   return v; // number
 };
 
+const productUnitInputSchema = (lang) =>
+  z.object({
+    name: z.string().max(191),
+    name_ar: z.string().max(191).optional(),
+    price: z
+      .union([z.string().transform(toDecimal), z.number()])
+      .refine((val) => val !== undefined && !Number.isNaN(val) && val >= 0, {
+        message: getTranslation(lang, "price_required"),
+      }),
+    description: z.string().max(191).optional(),
+    description_ar: z.string().max(191).optional(),
+  });
+
 export const productSchema = (
   lang,
   categoryAttributes = null,
@@ -100,6 +113,21 @@ export const productSchema = (
         .union([z.string().transform(toFloat), z.number()])
         .refine((val) => !Number.isNaN(val) && val >= 0, {
           message: getTranslation(lang, "price_required"),
+        })
+        .optional(),
+      units: z
+        .union([
+          z.array(productUnitInputSchema(lang)),
+          z.string().transform((val) => {
+            try {
+              return JSON.parse(val || "[]");
+            } catch {
+              return [];
+            }
+          }),
+        ])
+        .refine((arr) => Array.isArray(arr) && arr.length > 0, {
+          message: getTranslation(lang, "product_unit_required"), // add translation
         }),
 
       offer: z
@@ -239,7 +267,6 @@ export const productSchema = (
         .optional(),
 
       // ✅ NEW FIELDS (as in model)
-      unit_type: z.union([z.string().transform(toInt), z.number()]).optional(),
       color: z.string().max(191).optional(),
 
       // decimals (Prisma Decimal accepts string/number)
@@ -274,7 +301,7 @@ export const productSchema = (
         .union([z.string().transform(toDecimal), z.number()])
         .optional(),
 
-      discount_type: z.enum(["percent", "fixed"]).optional(),
+      discount_type: z.enum(["PERCENT", "FIXED"]).optional(),
 
       discount_value_total: z
         .union([z.string().transform(toDecimal), z.number()])
@@ -289,9 +316,6 @@ export const productSchema = (
         .union([z.string().transform(toDecimal), z.number()])
         .optional(),
 
-      available_amount: z
-        .union([z.string().transform(toDecimal), z.number()])
-        .optional(),
       reserved_in_carts_amount: z
         .union([z.string().transform(toDecimal), z.number()])
         .optional(),
@@ -402,7 +426,7 @@ export const productSchema = (
     // ✅ slug generation that actually stays in output
     .transform((data) => ({
       ...data,
-      slug: data.slug ?? data.name.toLowerCase().trim().replace(/\s+/g, "-"),
+      slug: data.slug ?? data.name.toLowerCase().trim().replaceAll(/\s+/g, "-"),
     }));
 
   return baseSchema;

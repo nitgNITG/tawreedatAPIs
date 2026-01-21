@@ -9,13 +9,20 @@ import sendEmail from "../../../nodemailer/sendEmail.js";
 
 export const userSchema = (lang) => {
   return z.object({
-    email: z.email({ message: getTranslation(lang, "invalid_email") }),
+    phone: z
+      .string()
+      .transform((phone) => {
+        return isValidPhone(phone)?.phone;
+      })
+      .refine((input) => parsePhoneNumber(input)?.isValid(), {
+        message: getTranslation(lang, "invalid_phone"),
+      }),
   });
 };
 
 const router = express.Router();
 
-router.route("/").patch(authorization(), async (req, res) => {
+router.route("/").patch(authorization, async (req, res) => {
   const lang = langReq(req);
   try {
     const user = req.user;
@@ -33,18 +40,18 @@ router.route("/").patch(authorization(), async (req, res) => {
     }
     const data = resultValidation.data;
 
-    if (data.email === user.email) {
+    if (data.phone === user.phone) {
       return res
         .status(400)
-        .json({ message: getTranslation(lang, "same_email") });
+        .json({ message: getTranslation(lang, "same_phone") });
     }
 
     const existingUser = await prisma.user.findUnique({
-      where: { email: data.email, NOT: { id } },
+      where: { phone: data.phone, NOT: { id } },
     });
     if (existingUser) {
       return res.status(400).json({
-        message: getTranslation(lang, "email_in_use"),
+        message: getTranslation(lang, "phone_in_use"),
       });
     }
     const code = generateCode(6);
@@ -53,7 +60,7 @@ router.route("/").patch(authorization(), async (req, res) => {
       data: {
         code: String(code),
         userId: id,
-        email: data.email,
+        phone: data.phone,
       },
     });
 
@@ -73,10 +80,11 @@ router.route("/").patch(authorization(), async (req, res) => {
     } catch (error) {
       console.error("Email send failed:", error?.message || error);
     }
+    // res.status(200).json({ message: getTranslation(lang, "check_phone") });
     res.status(200).json({ message: getTranslation(lang, "check_email") });
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    res.status(400).json({
       message: getTranslation(lang, "internalError"),
       error: error.message,
     });

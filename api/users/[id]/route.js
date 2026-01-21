@@ -8,83 +8,10 @@ import uploadImage from "../../../utils/uploadImage.js";
 import deleteImage from "../../../utils/deleteImage.js";
 import FeatureApi from "../../../utils/FetchDataApis.js";
 import { auth } from "../../../firebase/admin.js";
-import { z } from "zod";
-import { parsePhoneNumberWithError } from "libphonenumber-js";
+import { userSchema } from "../../../schemas/user.schemas.js";
+import { AppError } from "../../../utils/appError.js";
 
 const router = express.Router();
-
-const userSchema = (lang) => {
-  return z.object({
-    full_name: z
-      .string({ message: getTranslation(lang, "name_required") })
-      .min(1, { message: getTranslation(lang, "name_required") })
-      .max(100, { message: getTranslation(lang, "name_too_long") }),
-    phone: z.string({ message: getTranslation(lang, "invalid_phone") }).refine(
-      (phone) => {
-        try {
-          return parsePhoneNumberWithError(phone).isValid();
-        } catch {
-          return false;
-        }
-      },
-      { message: getTranslation(lang, "invalid_phone") },
-    ),
-    email: z
-      .email({ message: getTranslation(lang, "invalid_email") })
-      .optional(),
-    password: z
-      .string({ message: getTranslation(lang, "password_too_short") })
-      .min(6, { message: getTranslation(lang, "password_too_short") })
-      .max(100, { message: getTranslation(lang, "password_too_long") }),
-    gender: z
-      .enum(["MALE", "FEMALE"], {
-        message: getTranslation(lang, "invalid_gender"),
-      })
-      .optional(),
-    is_active: z
-      .union([
-        z.string().transform((checkString) => checkString === "true"),
-        z.boolean(),
-      ])
-      .optional(),
-    lang: z
-      .enum(["EN", "AR"], {
-        message: getTranslation(lang, "invalid_language"),
-      })
-      .optional(),
-    birth_date: z
-      .union([z.string(), z.date()], {
-        message: getTranslation(lang, "invalid_birthDate"),
-      })
-      .transform((el) => new Date(el))
-      .optional(),
-    is_confirmed: z
-      .union([
-        z.string().transform((checkString) => checkString === "true"),
-        z.boolean(),
-      ])
-      .optional(),
-    role_id: z
-      .string({
-        message: getTranslation(lang, "invalid_role"),
-      })
-      .optional(),
-    deleted_at: z
-      .union([
-        z.string().transform((s) => new Date(s)), // transform string to Date
-        z.date(), // accept actual Date objects
-      ])
-      .nullable()
-      .optional(),
-
-    deleteImage: z
-      .union([
-        z.string().transform((checkString) => checkString === "true"),
-        z.boolean(),
-      ])
-      .optional(),
-  });
-};
 
 const validateRoleIfExists = async (lang, data) => {
   if (!data.role_id) return;
@@ -94,12 +21,7 @@ const validateRoleIfExists = async (lang, data) => {
     select: { id: true },
   });
 
-  if (!role) {
-    throw {
-      status: 400,
-      message: getTranslation(lang, "invalid_role"),
-    };
-  }
+  if (!role) throw new AppError(getTranslation(lang, "invalid_role"));
 };
 
 router
@@ -132,10 +54,10 @@ router
       const lang = langReq(req);
       const { id } = req.params;
       try {
-        const resultValidation = userSchema(lang).partial().safeParse(req.body);
+        const schema = await userSchema(lang, false);
+        const resultValidation = schema.partial().safeParse(req.body);
         if (!resultValidation.success) {
           console.log(resultValidation.error);
-
           return res.status(400).json({
             message: resultValidation.error.issues[0].message,
             errors: resultValidation.error.issues.map((issue) => ({
@@ -150,6 +72,9 @@ router
         // hash password
         const isUser = await prisma.user.findUnique({
           where: { id },
+          include: {
+            role: { select: { id: true, name: true } },
+          },
         });
 
         if (!isUser)
@@ -246,6 +171,30 @@ router
           message: getTranslation(lang, "success"),
           user,
         });
+        const previousRoleName = isUser.role?.name;
+        const newRoleName = user.role?.name;
+
+        const roleChanged = previousRoleName !== newRoleName;
+
+        if (roleChanged && newRoleName === "customer") {
+          await prisma.customer.upsert({
+            where: { id: user.id },
+            update: {}, // nothing to update
+            create: {
+              id: user.id,
+              cart: {
+                connectOrCreate: {
+                  where: {
+                    customer_id: user.id,
+                  },
+                  create: {
+                    total_price: 0,
+                  },
+                },
+              },
+            },
+          });
+        }
       } catch (error) {
         console.error(error);
         res.status(500).json({
@@ -283,6 +232,7 @@ router
       await prisma.user.delete({
         where: { id },
       });
+      await auth.deleteUser(id);
       res.status(200).json({ message: getTranslation(lang, "user_deleted") });
       await deleteImage(isUser.image_url);
     } catch (error) {

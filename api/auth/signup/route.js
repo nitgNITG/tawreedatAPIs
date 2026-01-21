@@ -7,6 +7,8 @@ import prisma from "../../../prisma/client.js";
 import generateCode from "../../../utils/generateCode.js";
 import parsePhoneNumber from "libphonenumber-js";
 import { auth } from "../../../firebase/admin.js";
+import buildVerificationEmail from "../../../utils/buildVerificationEmail.js";
+import sendEmail from "../../../nodemailer/sendEmail.js";
 
 const router = express.Router();
 
@@ -16,27 +18,70 @@ const userSchema = (lang) => {
       .string({ message: getTranslation(lang, "name_required") })
       .min(1, { message: getTranslation(lang, "name_required") })
       .max(100, { message: getTranslation(lang, "name_too_long") }),
-    phone: z.string({ message: getTranslation(lang, "invalid_phone") }).refine(
-      (phone) => {
-        const phoneNumber = parsePhoneNumber(phone);
-        if (
-          (phoneNumber.country === "EG" || phoneNumber.country === "SA") &&
-          phone.length !== 13
-        )
-          return null;
-        return phoneNumber?.isValid();
-      },
-      { message: getTranslation(lang, "invalid_phone") }
-    ),
-    email: z
-      .email({ message: getTranslation(lang, "invalid_email") })
+    phone: z
+      .string({ message: getTranslation(lang, "invalid_phone") })
+      .refine(
+        (phone) => {
+          const phoneNumber = parsePhoneNumber(phone);
+          if (
+            (phoneNumber.country === "EG" || phoneNumber.country === "SA") &&
+            phone.length !== 13
+          )
+            return null;
+          return phoneNumber?.isValid();
+        },
+        { message: getTranslation(lang, "invalid_phone") },
+      )
       .optional(),
+    email: z.email({ message: getTranslation(lang, "invalid_email") }),
     password: z
       .string({ message: getTranslation(lang, "password_too_short") })
       .min(6, { message: getTranslation(lang, "password_too_short") })
       .max(100, { message: getTranslation(lang, "password_too_long") }),
   });
 };
+
+// const userSchemaEmailOrPhone = (lang) => {
+//   const phoneSchema = z
+//     .string({ message: getTranslation(lang, "invalid_phone") })
+//     .refine(
+//       (phone) => {
+//         const phoneNumber = parsePhoneNumber(phone);
+//         if (
+//           (phoneNumber.country === "EG" || phoneNumber.country === "SA") &&
+//           phone.length !== 13
+//         )
+//           return false;
+//         return phoneNumber?.isValid();
+//       },
+//       { message: getTranslation(lang, "invalid_phone") },
+//     );
+
+//   return z
+//     .object({
+//       full_name: z
+//         .string({ message: getTranslation(lang, "name_required") })
+//         .min(1, { message: getTranslation(lang, "name_required") })
+//         .max(100, { message: getTranslation(lang, "name_too_long") }),
+
+//       // both optional individually...
+//       email: z
+//         .email({ message: getTranslation(lang, "invalid_email") })
+//         .optional(),
+
+//       phone: phoneSchema.optional(),
+
+//       password: z
+//         .string({ message: getTranslation(lang, "password_too_short") })
+//         .min(6, { message: getTranslation(lang, "password_too_short") })
+//         .max(100, { message: getTranslation(lang, "password_too_long") }),
+//     })
+//     // ...but require at least one of them
+//     .refine((data) => !!data.email || !!data.phone, {
+//       message: getTranslation(lang, "email_or_phone_required"),
+//       path: ["email"], // where to attach the error (could also be ["phone"])
+//     });
+// };
 
 router.post("/", async (req, res) => {
   const lang = langReq(req);
@@ -49,28 +94,27 @@ router.post("/", async (req, res) => {
       });
     }
     const data = resultValidation.data;
-
-    const isPhone = await prisma.user.findUnique({
-      where: { phone: data.phone },
+    const isEmail = await prisma.user.findUnique({
+      where: { email: data.email },
     });
-    if (isPhone)
+    if (isEmail)
       return res
         .status(400)
-        .json({ message: getTranslation(lang, "phone_already_used") });
+        .json({ message: getTranslation(lang, "email_already_used") });
 
-    if (data.email) {
-      const isEmail = await prisma.user.findUnique({
-        where: { email: data.email },
+    if (data.phone) {
+      const isPhone = await prisma.user.findUnique({
+        where: { phone: data.phone },
       });
-      if (isEmail)
+      if (isPhone)
         return res
           .status(400)
-          .json({ message: getTranslation(lang, "email_already_used") });
+          .json({ message: getTranslation(lang, "phone_already_used") });
     }
     //firebase authentication
     const firebaseUser = await auth.createUser({
       displayName: data.full_name,
-      email: `${data.phone}@gmail.com`,
+      email: data.email,
       password: data.password,
     });
 
@@ -86,6 +130,15 @@ router.post("/", async (req, res) => {
             name: "customer",
           },
         },
+        customer: {
+          create: {
+            cart: {
+              create: {
+                total_price: 0,
+              },
+            },
+          },
+        },
       },
       include: {
         role: {
@@ -97,19 +150,62 @@ router.post("/", async (req, res) => {
     });
     const token = jwt.sign(
       { userId: user.id, role: user.role?.name },
-      process.env.SECRET_KEY
+      process.env.SECRET_KEY,
     );
 
     // create otp
     const code = generateCode(6);
 
+    // Send email only if user provided email
+    await prisma.userVerify.create({
+      data: {
+        code: `${code}`,
+        user_id: user.id,
+        email: user.email,
+      },
+    });
+
+    try {
+      const { subject, text, html } = buildVerificationEmail({
+        name: user.full_name,
+        code,
+        lang,
+      });
+
+      await sendEmail({
+        to: data.email,
+        subject,
+        text,
+        html,
+      });
+    } catch (error) {
+      console.error("Email send failed:", error?.message || error);
+    }
+
+    // const verificationTarget = data.email
+    //   ? { email: data.email }
+    //   : { phone: data.phone };
+
     // await prisma.userVerify.create({
     //   data: {
-    //     code: `${code}`,
-    //     userId: user.id,
-    //     phone: user.phone,
+    //     code: String(code),
+    //     user_id: user.id,
+    //     ...verificationTarget,
     //   },
     // });
+
+    // if (data.email) {
+    //   const { subject, text, html } = buildVerificationEmail({
+    //     name: user.full_name,
+    //     code,
+    //     lang,
+    //   });
+
+    //   await sendEmail({ to: data.email, subject, text, html });
+    // } else {
+    //   // TODO: send SMS to data.phone
+    //   // await sendSMSMessage(...)
+    // }
 
     //Device information.
     // const deviceDetector = new DeviceDetector();
@@ -127,26 +223,18 @@ router.post("/", async (req, res) => {
     //   },
     // });
 
-    // await prisma.wallet.create({
-    //   data: {
-    //     point: 0,
-    //     userId: user.id,
-    //   },
-    // });
+    const msg = data.email
+      ? getTranslation(lang, "check_your_email")
+      : getTranslation(lang, "check_your_phone"); // or "check_verification_code"
+
     res.status(200).json({
-      // message: getTranslation(lang, "check_your_phone"),
-      message: getTranslation(lang, "login_success"),
+      message: msg,
       token,
       id: user.id,
-      user: {
-        id: user.id,
-        firebaseEmail: `${user.phone}@gmail.com`,
-        role: user.role?.name,
-      },
     });
   } catch (error) {
     console.error(error);
-    res.status(400).json({
+    res.status(500).json({
       message: getTranslation(lang, "internalError"),
       error: error.message,
     });

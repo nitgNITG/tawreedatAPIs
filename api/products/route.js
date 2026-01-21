@@ -29,7 +29,7 @@ const generateSKU = async (categoryId, productName) => {
     const namePrefix = productName
       .substring(0, 3)
       .toUpperCase()
-      .replace(/[^A-Z]/g, "");
+      .replaceAll(/[^A-Z]/g, "");
     const timestamp = Date.now().toString().slice(-6);
     const random = Math.random().toString(36).substring(2, 5).toUpperCase();
 
@@ -57,7 +57,7 @@ const generateBarcode = async () => {
   const baseNumber = companyPrefix + productCode;
   let sum = 0;
   for (let i = 0; i < baseNumber.length; i++) {
-    const digit = parseInt(baseNumber[i]);
+    const digit = Number.parseInt(baseNumber[i]);
     sum += i % 2 === 0 ? digit : digit * 3;
   }
   const checkDigit = (10 - (sum % 10)) % 10;
@@ -66,14 +66,14 @@ const generateBarcode = async () => {
 
   let counter = 1;
   while (await prisma.product.findUnique({ where: { barcode } })) {
-    const newProductCode = (parseInt(productCode) + counter)
+    const newProductCode = (Number.parseInt(productCode) + counter)
       .toString()
       .padStart(9, "0");
     const newBaseNumber = companyPrefix + newProductCode;
 
     let newSum = 0;
     for (let i = 0; i < newBaseNumber.length; i++) {
-      const digit = parseInt(newBaseNumber[i]);
+      const digit = Number.parseInt(newBaseNumber[i]);
       newSum += i % 2 === 0 ? digit : digit * 3;
     }
     const newCheckDigit = (10 - (newSum % 10)) % 10;
@@ -99,7 +99,7 @@ router
 
         const query = new FeatureApi(req).fields().data;
 
-        // ✅ category_id is string in body usually => parseInt
+        // ✅ category_id is string in body usually => Number.parseInt
         const categoryId = Number.parseInt(req.body.category_id);
         if (Number.isNaN(categoryId)) {
           return res
@@ -136,7 +136,8 @@ router
         }
 
         const data = resultValidation.data;
-
+        const units = data.units;
+        delete data.units;
         // ✅ SKU/Barcode generation uses snake_case
         if (!data.sku)
           data.sku = await generateSKU(data.category_id, data.name);
@@ -178,7 +179,17 @@ router
 
         // ✅ create with snake_case data
         const product = await prisma.product.create({
-          data,
+          data: {
+            ...data,
+            units: {
+              create: units.map((u) => ({
+                name: u.name ,
+                price: u.price, // Prisma Decimal accepts number/string
+                description: u.description ?? null,
+                description_ar: u.description_ar ?? null,
+              })),
+            },
+          },
           ...(query ?? []),
         });
 

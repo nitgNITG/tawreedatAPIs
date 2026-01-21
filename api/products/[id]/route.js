@@ -14,36 +14,6 @@ import revalidateDashboard from "../../../utils/revalidateDashboard.js";
 
 const router = express.Router();
 
-// ✅ map camelCase request (schema) -> snake_case DB fields
-const toSnakeUpdate = (data) => {
-  const out = { ...data };
-
-  if ("nameAr" in out) ((out.name_ar = out.nameAr), delete out.nameAr);
-  if ("descriptionAr" in out)
-    ((out.description_ar = out.descriptionAr), delete out.descriptionAr);
-
-  if ("costPrice" in out)
-    ((out.cost_price = out.costPrice), delete out.costPrice);
-  if ("minStock" in out) ((out.min_stock = out.minStock), delete out.minStock);
-
-  if ("isActive" in out) ((out.is_active = out.isActive), delete out.isActive);
-  if ("isFeatured" in out)
-    ((out.is_featured = out.isFeatured), delete out.isFeatured);
-
-  if ("categoryId" in out)
-    ((out.category_id = out.categoryId), delete out.categoryId);
-  if ("brandId" in out) ((out.brand_id = out.brandId), delete out.brandId);
-  if ("supplierId" in out)
-    ((out.supplier_id = out.supplierId), delete out.supplierId);
-
-  if ("offerValidFrom" in out)
-    ((out.offer_valid_from = out.offerValidFrom), delete out.offerValidFrom);
-  if ("offerValidTo" in out)
-    ((out.offer_valid_to = out.offerValidTo), delete out.offerValidTo);
-
-  return out;
-};
-
 router
   .route("/:id")
   .get(async (req, res) => {
@@ -51,7 +21,7 @@ router
     const { id } = req.params;
 
     try {
-      const data = new FeatureApi(req).fields().filter({ id }).data;
+      const data = new FeatureApi(req).fields().includes().filter({ id }).data;
 
       const product = await prisma.product.findUnique(data);
 

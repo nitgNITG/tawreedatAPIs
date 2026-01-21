@@ -197,7 +197,7 @@ router.post("/", async (req, res) => {
       token,
       user: {
         id: user.id,
-        firebaseEmail: `${user.phone}@gmail.com`,
+        firebaseEmail: user.email || `${user.phone}@gmail.com`,
         role: user.role?.name,
       },
     });

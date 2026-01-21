@@ -2,115 +2,12 @@ import express from "express";
 import getTranslation, { langReq } from "../../middleware/getTranslation.js";
 import FeatureApi from "../../utils/FetchDataApis.js";
 import prisma from "../../prisma/client.js";
-import { z } from "zod";
 import authorization from "../../middleware/authorization.js";
-import { parsePhoneNumberWithError } from "libphonenumber-js";
 import bcrypt from "bcrypt";
 import upload from "../../middleware/upload.js";
 import uploadImage from "../../utils/uploadImage.js";
 import { auth } from "../../firebase/admin.js";
-
-const userSchema = async (lang) => {
-  const roles = await prisma.userRole.findMany({
-    select: {
-      id: true,
-    },
-  });
-  const roleIds = roles.map((r) => r.id);
-
-  return z.object({
-    full_name: z
-      .string({ message: getTranslation(lang, "name_required") })
-      .min(1, { message: getTranslation(lang, "name_required") })
-      .max(100, { message: getTranslation(lang, "name_too_long") }),
-    phone: z.string({ message: getTranslation(lang, "invalid_phone") }).refine(
-      (phone) => {
-        try {
-          return parsePhoneNumberWithError(phone).isValid();
-        } catch {
-          return false;
-        }
-      },
-      { message: getTranslation(lang, "invalid_phone") },
-    ),
-    email: z
-      .email({ message: getTranslation(lang, "invalid_email") })
-      .optional(),
-    password: z
-      .string({ message: getTranslation(lang, "password_too_short") })
-      .min(6, { message: getTranslation(lang, "password_too_short") })
-      .max(100, { message: getTranslation(lang, "password_too_long") }),
-    gender: z
-      .enum(["MALE", "FEMALE"], {
-        message: getTranslation(lang, "invalid_gender"),
-      })
-      .optional(),
-    is_active: z
-      .union([
-        z.string().transform((checkString) => checkString === "true"),
-        z.boolean(),
-      ])
-      .optional(),
-    lang: z
-      .enum(["EN", "AR"], {
-        message: getTranslation(lang, "invalid_language"),
-      })
-      .optional(),
-    birth_date: z
-      .union([z.string(), z.date()], {
-        message: getTranslation(lang, "invalid_birthDate"),
-      })
-      .transform((el) => new Date(el))
-      .optional(),
-    is_confirmed: z
-      .union([
-        z.string().transform((checkString) => checkString === "true"),
-        z.boolean(),
-      ])
-      .optional(),
-    role_id: z
-      .enum(roleIds, {
-        message: getTranslation(lang, "invalid_role"),
-      })
-      .optional(),
-    deleted_at: z
-      .union([
-        z.string().transform((s) => new Date(s)), // transform string to Date
-        z.date(), // accept actual Date objects
-      ])
-      .nullable()
-      .optional(),
-
-    deleteImage: z
-      .union([
-        z.string().transform((checkString) => checkString === "true"),
-        z.boolean(),
-      ])
-      .optional(),
-  });
-};
-
-const deleteUsersSchema = (lang) => {
-  return z.union([
-    z.object({
-      notConfirmed: z.boolean(),
-    }),
-    z.object({
-      isDeleted: z.boolean(),
-    }),
-    z.object({
-      notActive: z.boolean(),
-    }),
-    z.object({
-      ids: z
-        .array(z.string(), {
-          message: getTranslation(lang, "user_ids_required"),
-        })
-        .min(1, { message: getTranslation(lang, "user_ids_required") }),
-      archived: z.boolean().optional(),
-    }),
-  ]);
-};
+import { userSchema, deleteUsersSchema } from "../../schemas/user.schemas.js";
 
 const router = express.Router();
 router
@@ -121,8 +18,6 @@ router
     async (req, res) => {
       const lang = langReq(req);
       try {
-        const lang = langReq(req);
-
         const schema = await userSchema(lang);
         const resultValidation = schema.safeParse(req.body);
 
@@ -155,7 +50,7 @@ router
         }
         const firebaseUser = await auth.createUser({
           displayName: data.full_name,
-          email: `${data.phone}@gmail.com`,
+          email: data.email || `${data.phone}@gmail.com`,
           password: data.password,
         });
 
@@ -188,6 +83,18 @@ router
           message: getTranslation(lang, "user_created_successfully"),
           user: { ...formattedUser },
         });
+        if (user.role.name === "customer") {
+          await prisma.customer.create({
+            data: {
+              id: user.id,
+              cart: {
+                create: {
+                  total_price: 0,
+                },
+              },
+            },
+          });
+        }
       } catch (error) {
         console.error(error);
         res.status(500).json({
@@ -207,6 +114,7 @@ router
         .skip()
         .sort()
         .limit(10)
+        .includes()
         .keyword(["full_name", "phone", "email"], "OR").data;
 
       const totalUsers = await prisma.user.count({ where: data.where });
