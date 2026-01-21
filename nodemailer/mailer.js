@@ -4,7 +4,8 @@ export function getTransporter() {
   return createTransport({
     host: process.env.MAIL_HOST,
     port: Number(process.env.MAIL_PORT),
-    secure: process.env.MAIL_SECURE === "true",
+    secure: Number(process.env.MAIL_PORT) === 465,
+    requireTLS: Number(process.env.MAIL_PORT) === 465,
     auth: {
       user: process.env.MAIL_USER,
       pass: process.env.MAIL_PASS,

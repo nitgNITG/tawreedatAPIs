@@ -48,7 +48,8 @@ function buildTransporter() {
   return nodemailer.createTransport({
     host: process.env.MAIL_HOST,
     port: Number(process.env.MAIL_PORT),
-    secure: String(process.env.MAIL_SECURE).toLowerCase() === "true",
+    secure: Number(process.env.MAIL_PORT) === 465,
+    requireTLS: Number(process.env.MAIL_PORT) === 465,
     auth: {
       user: process.env.MAIL_USER,
       pass: process.env.MAIL_PASS,
