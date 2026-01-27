@@ -7,38 +7,43 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Users \\
+// =========================================================
+// Models
+// =========================================================
+
+// ========== User ==========
+
 model User {
-  id                    String       @id @default(uuid())
-  email                 String?      @unique @db.VarChar(70)
-  phone                 String?      @unique @db.VarChar(20)
-  password              String?      @db.VarChar(100)
-  lang                  Language     @default(AR)
+  id                    String                 @id @default(uuid())
+  email                 String?                @unique @db.VarChar(70)
+  phone                 String?                @unique @db.VarChar(20)
+  password              String?                @db.VarChar(100)
+  lang                  Language               @default(AR)
   apple_id              String?
   birth_date            DateTime?
-  created_at            DateTime?    @default(now())
+  created_at            DateTime?              @default(now())
   deleted_at            DateTime?
   fcm_token             String?
   full_name             String
   image_url             String?
-  is_confirmed          Boolean?     @default(false)
+  is_confirmed          Boolean?               @default(false)
   last_login_at         String?
-  login_type            LoginType    @default(LOCAL)
+  login_type            LoginType              @default(LOCAL)
   password_last_updated DateTime?
   role_id               String
-  updated_at            DateTime?    @updatedAt
-  is_active             Boolean?     @default(true)
-  gender                Gender       @default(MALE)
+  updated_at            DateTime?              @updatedAt
+  is_active             Boolean?               @default(true)
+  gender                Gender                 @default(MALE)
+  customer              Customer?
   orders                Order[]
-  requestedRefunds      Refund[]     @relation("RefundRequestedBy")
-  reviewedRefunds       Refund[]     @relation("RefundReviewedBy")
-  reviews               Review[]
-  role                  UserRole     @relation(fields: [role_id], references: [id])
+  requestedRefunds      Refund[]               @relation("RefundRequestedBy")
+  reviewedRefunds       Refund[]               @relation("RefundReviewedBy")
+  reviews               reviews[]
+  role                  UserRole               @relation(fields: [role_id], references: [id])
   UserVerify            UserVerify[]
   wallet                Wallet?
-  customer              Customer? // <-- add this back-reference
-
-  wishlist WishlistItem[]
+  wishlist              WishlistItem[]
+  profileUpdateRequests ProfileUpdateRequest[]
 
   @@index([role_id], map: "user_role_id_fkey")
   @@map("user")
@@ -57,225 +62,17 @@ model UserRole {
 }
 
 model UserVerify {
-  id         Int      @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   user_id    String
-  code       String   @unique
+  code       String    @unique
   phone      String?
   email      String?
-  created_at DateTime @default(now())
-  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id], map: "UserVerify_user_id_fkey")
   @@map("user_verify")
-}
-
-model Customer {
-  id       String @id
-  type_id  Int?
-  badge_id Int?
-  class_id Int?
-  user     User   @relation(fields: [id], references: [id], onDelete: Cascade)
-
-  type                 CustomerType?                 @relation(fields: [type_id], references: [id])
-  badge                CustomerBadge?                @relation(fields: [badge_id], references: [id])
-  class                CustomerClass?                @relation(fields: [class_id], references: [id])
-  addresses            CustomerAddress[]
-  stats                CustomerStat?
-  cart                 Cart?
-  receiptConfirmations CustomerReceiptConfirmation[]
-
-  @@map("customer")
-}
-
-model CustomerType {
-  id          Int        @id @default(autoincrement())
-  name        String     @unique @db.VarChar(191)
-  description String?    @db.VarChar(191)
-  created_at  DateTime   @default(now())
-  updated_at  DateTime   @updatedAt
-  deleted_at  DateTime?
-  customers   Customer[]
-
-  @@map("customer_type")
-}
-
-model CustomerAddress {
-  id               Int       @id @default(autoincrement())
-  customer_id      String
-  name             String
-  address          String?   @db.VarChar(191)
-  is_default       Boolean   @default(false)
-  city             String?   @db.VarChar(191)
-  area_id          String?   @db.VarChar(191)
-  country          String?   @default("Egypt") @db.VarChar(191)
-  postal_code      String?   @db.VarChar(191)
-  latitude         Decimal?  @db.Decimal(10, 8)
-  longitude        Decimal?  @db.Decimal(11, 8)
-  recipient_name   String?   @db.VarChar(191)
-  recipient_phone  String?   @db.VarChar(191)
-  notes            String?   @db.Text
-  apartment_number String?
-  building_number  String?
-  floor_number     String?
-  created_at       DateTime  @default(now())
-  updated_at       DateTime  @updatedAt
-  deleted_at       DateTime?
-  customer         Customer  @relation(fields: [customer_id], references: [id])
-  // deliveryAssignments OrderAssignment[] @relation("DeliveryAddress")
-  orders           Order[]
-
-  @@map("customer_address")
-}
-
-model CustomerStat {
-  customer_id     String    @id
-  last_order_date DateTime?
-  total_spent     Decimal?
-  total_orders    Int?
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
-  customer        Customer  @relation(fields: [customer_id], references: [id])
-
-  @@map("customer_stat")
-}
-
-model CustomerBadge {
-  id             Int      @id @default(autoincrement())
-  name           String   @unique
-  name_ar        String   @unique
-  min_amount     Float
-  max_amount     Float
-  ratio          Int
-  description    String?  @db.Text
-  description_ar String?  @db.Text
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  customers Customer[]
-  offers    Offer[]
-  ads       Ad[]
-
-  @@map("customer_badge")
-}
-
-model CustomerClass {
-  id          Int                @id @default(autoincrement())
-  name        CustomerClassName?
-  description String?            @db.Text
-  created_at  DateTime           @default(now())
-  updated_at  DateTime           @updatedAt
-
-  customers Customer[]
-  offers    Offer[]
-  ads       Ad[]
-
-  @@map("customer_class")
-}
-
-enum CustomerClassName {
-  NEW
-  REPEAT
-  LOYAL
-  LOST
-}
-
-model Cart {
-  id          Int       @id @default(autoincrement())
-  customer_id String    @unique
-  total_price Decimal
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
-  deleted_at  DateTime?
-  customer    Customer  @relation(fields: [customer_id], references: [id], onDelete: Cascade)
-
-  orders    Order[]
-  cartItems CartItem[]
-
-  @@map("cart")
-}
-
-model Offer {
-  id                       Int       @id @default(autoincrement())
-  product_id               String?
-  target_customer_badge_id Int?
-  offer_type               String?   @db.VarChar(191)
-  offer_value              Decimal?
-  start_date               DateTime? @db.Date
-  end_date                 DateTime? @db.Date
-  is_active                Boolean?  @default(true)
-  synonyms                 String?   @db.VarChar(191)
-  created_at               DateTime  @default(now())
-  updated_at               DateTime  @updatedAt
-
-  product           Product?       @relation(fields: [product_id], references: [id])
-  customerBadge     CustomerBadge? @relation(fields: [target_customer_badge_id], references: [id])
-  orderItems        OrderItem[]
-  cartItems         CartItem[]
-  customerClass     CustomerClass? @relation(fields: [customer_class_id], references: [id])
-  customer_class_id Int?
-
-  @@map("offer")
-}
-
-model CustomerReceiptConfirmation {
-  id                    Int               @id @default(autoincrement())
-  assignment_id         Int?
-  customer_id           String?
-  items_amount          Decimal?
-  package_condition     PackageCondition?
-  condition_notes       String?           @db.Text
-  photos_url            String?           @db.VarChar(191)
-  receipt_number        String?           @db.VarChar(191)
-  otp_verified          Boolean?
-  confirmed_at          DateTime?
-  product_rating        Int?
-  representative_rating Int?
-  delivery_feedback     String?           @db.Text
-  created_at            DateTime          @default(now())
-  updated_at            DateTime          @updatedAt
-
-  assignment OrderAssignment? @relation(fields: [assignment_id], references: [id])
-  customer   Customer?        @relation(fields: [customer_id], references: [id])
-
-  @@map("customer_receipt_confirmation")
-}
-
-model OrderAssignment {
-  id                      Int       @id @default(autoincrement())
-  order_id                Int?
-  representative_id       String?
-  // status                  AssignmentStatus?
-  pickup_address_id       String?
-  estimated_pickup_time   DateTime?
-  actual_pickup_time      DateTime?
-  delivery_address_id     String?
-  estimated_delivery_time DateTime?
-  actual_delivery_time    DateTime?
-  failure_reason          String?   @db.VarChar(191)
-  notes                   String?   @db.Text
-  created_at              DateTime  @default(now())
-  updated_at              DateTime  @updatedAt
-  deleted_at              DateTime?
-
-  order Order? @relation(fields: [order_id], references: [id])
-  // representative  ShippingRepresentative? @relation(fields: [representative_id], references: [id])
-  // pickupAddress   SupplierStoreAddress?   @relation("PickupAddress", fields: [pickup_address_id], references: [id])
-  // deliveryAddress CustomerAddress? @relation("DeliveryAddress", fields: [delivery_address_id], references: [id])
-
-  // handoverConfirmation SupplierHandoverConfirmation[]
-  // pickupConfirmation   RepresentativePickupConfirmation[]
-  // deliveryConfirmation RepresentativeDeliveryConfirmation[]
-  // receiptConfirmation  CustomerReceiptConfirmation[]
-  // issues               DeliveryIssue[]
-  customerReceiptConfirmations CustomerReceiptConfirmation[]
-
-  @@map("order_assignment")
-}
-
-enum PackageCondition {
-  GOOD
-  DAMAGED
-  INCOMPLETE
 }
 
 model Wallet {
@@ -291,19 +88,127 @@ model Wallet {
   @@map("wallet")
 }
 
-model Faq {
-  id         Int       @id @default(autoincrement())
-  question   String
-  answer     String
-  language   Language? @default(EN)
-  sort_id    Int       @default(0)
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
-  is_active  Boolean   @default(true)
+// ========== Supplier ==========
 
-  @@index([sort_id])
-  @@map("faq")
+model Supplier {
+  id                  String   @id // References User.id (String)
+  type_id             String
+  badge_id            String?
+  national_id         String   @db.VarChar(191)
+  synonyms            String?  @db.VarChar(191)
+  tax_card            String   @db.VarChar(191)
+  commercial_register String   @db.VarChar(191)
+  is_approved         Boolean? @default(false)
+
+  type      SupplierType?          @relation(fields: [type_id], references: [id])
+  badge     SupplierBadge?         @relation(fields: [badge_id], references: [id])
+  addresses SupplierStoreAddress[]
+  products  Product[]
+  contracts Contract[]
+  stats     SupplierStat?
+  // complaints            Complaint[]
+  // handoverConfirmations SupplierHandoverConfirmation[]
+
+  @@map("supplier")
 }
+
+model SupplierType {
+  id          String     @id @default(uuid())
+  name        String     @unique @db.VarChar(191)
+  description String?    @db.VarChar(191)
+  synonyms    String?    @db.VarChar(191)
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+  deleted_at  DateTime?
+  suppliers   Supplier[]
+
+  @@map("supplier_type")
+}
+
+model ProfileUpdateRequest {
+  id         String        @id @default(uuid())
+  user_id    String
+  data       Json
+  status     RequestStatus @default(PENDING)
+  created_at DateTime      @default(now())
+  updated_at DateTime      @updatedAt
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("profile_update_request")
+}
+
+model SupplierStoreAddress {
+  id               String            @id @default(uuid())
+  supplier_id      String
+  address_line_1   String?           @db.VarChar(191)
+  address_line_2   String?           @db.VarChar(191)
+  city             String?           @db.VarChar(191)
+  state            String?           @db.VarChar(191)
+  country          String?           @default("Egypt") @db.VarChar(191)
+  google_map_link  String?           @db.VarChar(191)
+  latitude         Decimal?          @db.Decimal(10, 8)
+  longitude        Decimal?          @db.Decimal(11, 8)
+  contact_name     String?           @db.VarChar(191)
+  contact_phone    String?           @db.VarChar(191)
+  working_hours    Json?
+  created_at       DateTime          @default(now())
+  updated_at       DateTime          @updatedAt
+  supplier         Supplier?         @relation(fields: [supplier_id], references: [id])
+  // pickupAssignments OrderAssignment[] @relation("PickupAddress")
+  orderAssignments OrderAssignment[]
+
+  @@map("supplier_store_address")
+}
+
+model SupplierActivity {
+  id                 String    @id @default(uuid())
+  product_id         String?
+  old_price_out_site Decimal?
+  new_price_out_site Decimal?
+  changed_by_id      String?
+  change_reason      String?   @db.VarChar(191)
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  deleted_at         DateTime?
+  product            Product?  @relation(fields: [product_id], references: [id])
+
+  @@map("supplier_activity")
+}
+
+model SupplierStat {
+  supplier_id            String    @id
+  total_customers        Int?
+  total_orders           Int?
+  total_delivered_orders Int?
+  total_cancelled_orders Int?
+  total_active_products  Int?
+  last_order_date        DateTime?
+  category_stat          Json?
+  brand_stat             Json?
+  total_products_rating  Json?
+  sales_history          Json?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+  supplier               Supplier  @relation(fields: [supplier_id], references: [id])
+
+  @@map("supplier_stat")
+}
+
+model SupplierBadge {
+  id               String     @id @default(uuid())
+  name             String     @unique @db.VarChar(191)
+  description      String?    @db.Text
+  min_value        Decimal?
+  max_value        Decimal?
+  visibility_score Decimal?
+  suppliers        Supplier[]
+  ads              Ad[]
+
+  @@map("supplier_badge")
+}
+
+// Product & Categories
 
 model Category {
   id                 Int             @id @default(autoincrement())
@@ -333,132 +238,110 @@ model Category {
   @@map("category")
 }
 
-model Brand {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-  slug String @unique
-
-  name_ar   String?
-  logo_url  String?
-  cover_url String?
-
-  is_active  Boolean @default(true)
-  is_popular Boolean @default(false)
-
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
-  deleted_at DateTime?
-
-  description    String? @db.LongText
-  description_ar String? @db.LongText
-  synonyms       String? @db.VarChar(191)
-
-  up_to   Int?
-  sort_id Int  @default(0)
-
-  categories BrandCategory[]
-  products   Product[]
-
-  @@index([sort_id])
-  @@fulltext([name, name_ar, synonyms, description, description_ar])
-  @@map("brand")
-}
-
 model BrandCategory {
-  id Int @id @default(autoincrement())
-
+  id          Int      @id @default(autoincrement())
   brand_id    Int
   category_id Int
   created_at  DateTime @default(now())
-
-  brand    Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  brand       Brand    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  category    Category @relation(fields: [category_id], references: [id], onDelete: Cascade)
 
   @@unique([brand_id, category_id])
   @@index([category_id], map: "brand_categories_categoryId_fkey")
   @@map("brand_category")
 }
 
-model Product {
-  id             String  @id @default(uuid())
-  name           String
-  name_ar        String?
-  description    String? @db.LongText
-  description_ar String? @db.LongText
-  synonyms       String? @db.VarChar(191)
-  slug           String? @unique
-
-  price      Float?
-  cost_price Float?
-  stock      Int    @default(0)
-  min_stock  Int    @default(5)
-
-  sku         String  @unique
-  barcode     String? @unique
-  images      String? @db.LongText
-  weight      Float?
-  dimensions  String?
-  is_active   Boolean @default(true)
-  is_featured Boolean @default(false)
-  offer       Float?
-  category_id Int
-  supplier_id String?
-  brand_id    Int?
-
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
-  deleted_at DateTime?
-
-  rating           Float?    @default(0)
-  total_reviews    Int       @default(0)
-  offer_valid_from DateTime?
-  offer_valid_to   DateTime?
-
-  is_best_seller Boolean @default(false)
-  sort_id        Int     @default(0)
-
-  // new fields
-  color                            String?       @db.VarChar(191)
-  min_discount_rate                Decimal?
-  min_amount_for_one_user          Decimal?
-  max_amount_for_one_user          Decimal?
-  min_amount_for_one_order         Decimal?
-  max_amount_for_one_order         Decimal?
-  refundable                       Boolean?
-  refundable_period                Decimal?
-  refund_policy                    String?       @db.Text
-  price_out_site                   Decimal?
-  discount_type                    DiscountType?
-  discount_value_total             Decimal?
-  discount_value_part_for_customer Decimal?
-  discount_value_part_for_company  Decimal?
-  discount_value_part_for_offers   Decimal?
-  reserved_in_carts_amount         Decimal?
-
-  cartItems  CartItem[]
-  orderItems OrderItem[]
-  attributes ProductAttribute[]
-
-  units    ProductUnit[]
-  brand    Brand?        @relation(fields: [brand_id], references: [id])
-  category Category      @relation(fields: [category_id], references: [id])
-  supplier Supplier?     @relation(fields: [supplier_id], references: [id])
-
-  reviews  Review[]
-  wishlist WishlistItem[]
-  offers   Offer[]
+model Brand {
+  id              Int             @id @default(autoincrement())
+  name            String          @unique
+  slug            String          @unique
+  name_ar         String?
+  logo_url        String?
+  cover_url       String?
+  is_active       Boolean         @default(true)
+  is_popular      Boolean         @default(false)
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+  description     String?         @db.LongText
+  description_ar  String?         @db.LongText
+  up_to           Int?
+  sort_id         Int             @default(0)
+  deleted_at      DateTime?
+  synonyms        String?
+  brandCategories BrandCategory[]
+  products        Product[]
 
   @@index([sort_id])
+  @@fulltext([name, name_ar, synonyms, description, description_ar])
+  @@map("brand")
+}
+
+model Product {
+  id                               String             @id @default(uuid())
+  name                             String
+  name_ar                          String?
+  description                      String?            @db.LongText
+  description_ar                   String?            @db.LongText
+  price                            Float?
+  cost_price                       Float?
+  stock                            Int                @default(0)
+  min_stock                        Int                @default(5)
+  sku                              String             @unique
+  barcode                          String?            @unique
+  images                           String?            @db.LongText
+  weight                           Float?
+  dimensions                       String?
+  is_active                        Boolean            @default(true)
+  is_featured                      Boolean            @default(false)
+  offer                            Float?
+  category_id                      Int
+  supplier_id                      String?
+  brand_id                         Int?
+  created_at                       DateTime           @default(now())
+  updated_at                       DateTime           @updatedAt
+  rating                           Float?             @default(0)
+  total_reviews                    Int                @default(0)
+  offer_valid_from                 DateTime?
+  offer_valid_to                   DateTime?
+  is_best_seller                   Boolean            @default(false)
+  sort_id                          Int                @default(0)
+  color                            String?
+  deleted_at                       DateTime?
+  discount_type                    DiscountType?
+  discount_value_part_for_company  Decimal?
+  discount_value_part_for_customer Decimal?
+  discount_value_part_for_offers   Decimal?
+  discount_value_total             Decimal?
+  max_amount_for_one_order         Decimal?
+  max_amount_for_one_user          Decimal?
+  min_amount_for_one_order         Decimal?
+  min_amount_for_one_user          Decimal?
+  min_discount_rate                Decimal?
+  price_out_site                   Decimal?
+  refund_policy                    String?            @db.Text
+  refundable                       Boolean?
+  refundable_period                Decimal?
+  reserved_in_carts_amount         Decimal?
+  slug                             String?            @unique
+  synonyms                         String?
+  cartItems                        CartItem[]
+  offers                           Offer[]
+  orderItems                       OrderItem[]
+  brand                            Brand?             @relation(fields: [brand_id], references: [id])
+  category                         Category           @relation(fields: [category_id], references: [id])
+  supplier                         Supplier?          @relation(fields: [supplier_id], references: [id])
+  attributes                       ProductAttribute[]
+  units                            ProductUnit[]
+  reviews                          reviews[]
+  wishlist                         WishlistItem[]
+  supplierActivities               SupplierActivity[]
+
   @@index([brand_id])
   @@index([category_id])
   @@index([supplier_id])
+  @@index([sort_id])
   @@fulltext([name, name_ar, description, description_ar])
   @@map("product")
-}
-
-enum DiscountType {
-  PERCENT
-  FIXED
 }
 
 model ProductAttribute {
@@ -476,81 +359,424 @@ model ProductAttribute {
 
 model ProductUnit {
   id             Int        @id @default(autoincrement())
-  product_id     String
-  name           String     @db.VarChar(191)
-  name_ar        String?    @db.VarChar(191)
+  name           String
   price          Decimal
-  description    String?    @db.VarChar(191)
-  description_ar String?    @db.VarChar(191)
+  description    String?
+  description_ar String?
+  name_ar        String?
+  product_id     String
+  cart_item      CartItem[]
   product        Product    @relation(fields: [product_id], references: [id])
-  cartItems      CartItem[]
 
+  @@index([product_id], map: "product_unit_product_id_fkey")
   @@map("product_unit")
 }
 
-model Supplier {
-  id            String    @id @default(uuid())
-  name          String
-  nameAr        String?
-  email         String?   @unique
-  phone         String?
-  address       String?
-  city          String?
-  governorate   String?
-  contactPerson String?
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  products      Product[]
+model Colors {
+  id   String @id
+  name String @db.VarChar(100)
+  code String @db.VarChar(7)
+}
 
-  @@map("suppliers")
+model Offer {
+  id                       Int            @id @default(autoincrement())
+  product_id               String?
+  target_customer_badge_id Int?
+  offer_type               String?
+  offer_value              Decimal?
+  start_date               DateTime?      @db.Date
+  end_date                 DateTime?      @db.Date
+  is_active                Boolean?       @default(true)
+  synonyms                 String?
+  created_at               DateTime       @default(now())
+  updated_at               DateTime       @updatedAt
+  customer_class_id        Int?
+  cartItems                CartItem[]
+  customer_class           CustomerClass? @relation(fields: [customer_class_id], references: [id])
+  product                  Product?       @relation(fields: [product_id], references: [id])
+  customerBadge            CustomerBadge? @relation(fields: [target_customer_badge_id], references: [id])
+  orderItems               OrderItem[]
+
+  @@index([customer_class_id], map: "offer_customer_class_id_fkey")
+  @@index([product_id], map: "offer_product_id_fkey")
+  @@index([target_customer_badge_id], map: "offer_target_customer_badge_id_fkey")
+  @@map("offer")
+}
+
+model Contract {
+  id                 String          @id @default(uuid())
+  supplier_id        String?
+  details            String?         @db.VarChar(191)
+  min_discount_ratio Decimal?
+  max_discount_ratio Decimal?
+  start_date         DateTime?       @db.Date
+  end_date           DateTime?       @db.Date
+  status             ContractStatus?
+  created_at         DateTime        @default(now())
+  updated_at         DateTime        @updatedAt
+  deleted_at         DateTime?
+  supplier           Supplier?       @relation(fields: [supplier_id], references: [id])
+
+  @@map("contract")
+}
+
+// ========== Admin ==========
+
+model Ad {
+  id                       String         @id @default(uuid())
+  ad_type                  AdType?
+  source                   String?
+  budget                   Decimal?
+  title                    String?        @db.Text
+  title_ar                 String?        @db.Text
+  description              String?        @db.Text
+  description_ar           String?        @db.Text
+  priority                 Int?
+  status                   AdStatus?
+  image_url                String?
+  target_url               String?
+  placement                AdPlacement?
+  popup_size               PopupSize?
+  closable                 Boolean?
+  mobile_screen            String?        @db.Text
+  start_date               DateTime?
+  end_date                 DateTime?
+  time_slots               String?        @db.LongText
+  duration_seconds         Int?
+  shown_seconds            Int?
+  first_shown_at           DateTime?
+  last_shown_at            DateTime?
+  target_customer_badge_id Int?
+  target_supplier_badge_id Int?
+  sort_id                  Int?           @default(0)
+  created_at               DateTime       @default(now())
+  updated_at               DateTime       @updatedAt
+  deleted_at               DateTime?
+  customer_class_id        Int?
+  customer_class           CustomerClass? @relation(fields: [customer_class_id], references: [id])
+  customerBadge            CustomerBadge? @relation(fields: [target_customer_badge_id], references: [id])
+  supplierBadge            SupplierBadge? @relation(fields: [supplierBadgeId], references: [id])
+  supplierBadgeId          String?
+
+  @@index([customer_class_id], map: "ad_customer_class_id_fkey")
+  @@index([target_customer_badge_id], map: "ad_target_customer_badge_id_fkey")
+  @@map("ad")
+}
+
+model reviews {
+  id        String         @id
+  userId    String
+  productId String
+  rating    Float
+  comment   String?        @db.LongText
+  createdAt DateTime       @default(now())
+  updatedAt DateTime
+  status    reviews_status @default(PENDING)
+  product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId])
+  @@index([userId])
+}
+
+// model Review {
+//   id          String            @id @default(uuid())
+//   reviewer_id String?
+//   target_type ReviewTargetType?
+//   target_id   String?
+//   rating      Int?
+//   comment     String?           @db.Text
+//   order_id    String?
+//   status      reviews_status?   @default(PENDING)
+//   created_at  DateTime          @default(now())
+//   updated_at  DateTime          @updatedAt
+//   deleted_at  DateTime?
+//   reviewer    User?             @relation(fields: [reviewer_id], references: [id])
+//   order       Order?            @relation(fields: [order_id], references: [id])
+
+//   @@map("review")
+// }
+
+// model Admin {
+//   id                      String                  @id // References User.id
+//   type_id                 String?
+//   created_at              DateTime                @default(now())
+//   updated_at              DateTime                @updatedAt
+//   deleted_at              DateTime?
+//   type                    AdminType?              @relation(fields: [type_id], references: [id])
+//   activities              AdminActivity[]
+//   confirmedWalletPayments WalletPaymentDetail[]
+//   confirmedInstaPayments  InstapayPaymentDetail[]
+
+//   @@map("admin")
+// }
+
+// model AdminType {
+//   id          String    @id @default(uuid())
+//   name        String    @unique @db.VarChar(191)
+//   description String?   @db.VarChar(191)
+//   created_at  DateTime  @default(now())
+//   updated_at  DateTime  @updatedAt
+//   deleted_at  DateTime?
+//   admins      Admin[]
+
+//   @@map("admin_type")
+// }
+
+// model AdminActivity {
+//   id                   String        @id @default(uuid())
+//   admin_id             String?
+//   target_module        TargetModule?
+//   activity_type        ActivityType?
+//   activity_description String?       @db.VarChar(191)
+//   extra_info           Json?
+//   created_at           DateTime      @default(now())
+//   updated_at           DateTime      @updatedAt
+//   admin                Admin?        @relation(fields: [admin_id], references: [id])
+
+//   @@map("admin_activity")
+// }
+
+// // Support & Notifications 
+// model Complaint {
+//   id              String                  @id @default(uuid())
+//   created_by_type ComplaintCreatedByType?
+//   created_by_id   String?
+//   order_id        String?
+//   supplier_id     String?
+//   subject         String?                 @db.VarChar(191)
+//   description     String?                 @db.Text
+//   status          ComplaintStatus?
+//   priority        Priority?
+//   created_at      DateTime                @default(now())
+//   updated_at      DateTime                @updatedAt
+//   deleted_at      DateTime?
+
+//   order    Order?             @relation(fields: [order_id], references: [id])
+//   supplier Supplier?          @relation(fields: [supplier_id], references: [id])
+//   messages ComplaintMessage[]
+
+//   @@map("complaint")
+// }
+
+// model ComplaintMessage {
+//   id           String     @id @default(uuid())
+//   complaint_id String?
+//   sender_id    String?
+//   message      String?    @db.Text
+//   created_at   DateTime   @default(now())
+//   updated_at   DateTime   @updatedAt
+//   deleted_at   DateTime?
+//   complaint    Complaint? @relation(fields: [complaint_id], references: [id])
+
+//   @@map("complaint_message")
+// }
+
+// model Notification {
+//   id                String            @id @default(uuid())
+//   recipient_id      String?
+//   title             String?           @db.VarChar(191)
+//   message           String?           @db.Text
+//   link              String?           @db.VarChar(191)
+//   notification_type NotificationType?
+//   channel           Channel?
+//   is_read           Boolean?          @default(false)
+//   read_at           DateTime?
+//   scheduled_at      DateTime?
+//   sent_at           DateTime?
+//   created_at        DateTime          @default(now())
+//   updated_at        DateTime          @updatedAt
+//   deleted_at        DateTime?
+
+//   @@map("notification")
+// }
+
+// model NotificationSetting {
+//   id         String   @id @default(uuid())
+//   user_id    String?
+//   channel    Channel?
+//   enabled    Boolean? @default(true)
+//   created_at DateTime @default(now())
+//   updated_at DateTime @updatedAt
+
+//   @@map("notification_setting")
+// }
+
+// ========== Customer ==========
+
+model Customer {
+  id                   String                        @id
+  type_id              Int?
+  badge_id             Int?
+  class_id             Int?
+  cart                 Cart?
+  badge                CustomerBadge?                @relation(fields: [badge_id], references: [id])
+  class                CustomerClass?                @relation(fields: [class_id], references: [id])
+  user                 User                          @relation(fields: [id], references: [id], onDelete: Cascade)
+  type                 CustomerType?                 @relation(fields: [type_id], references: [id])
+  addresses            CustomerAddress[]
+  receiptConfirmations CustomerReceiptConfirmation[]
+  stats                CustomerStat?
+
+  @@index([badge_id], map: "customer_badge_id_fkey")
+  @@index([class_id], map: "customer_class_id_fkey")
+  @@index([type_id], map: "customer_type_id_fkey")
+  @@map("customer")
+}
+
+model CustomerType {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique
+  description String?
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+  deleted_at  DateTime?
+  customers   Customer[]
+
+  @@map("customer_type")
+}
+
+model CustomerAddress {
+  id               Int       @id @default(autoincrement())
+  customer_id      String
+  city             String?
+  country          String?   @default("Egypt")
+  postal_code      String?
+  latitude         Decimal?  @db.Decimal(10, 8)
+  longitude        Decimal?  @db.Decimal(11, 8)
+  recipient_name   String?
+  recipient_phone  String?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+  deleted_at       DateTime?
+  address          String?
+  apartment_number String?
+  area_id          String?
+  building_number  String?
+  floor_number     String?
+  is_default       Boolean   @default(false)
+  name             String
+  notes            String?   @db.Text
+  customer         Customer  @relation(fields: [customer_id], references: [id])
+  orders           Order[]
+
+  @@index([customer_id], map: "customer_address_customer_id_fkey")
+  @@map("customer_address")
+}
+
+model CustomerStat {
+  customer_id     String    @id
+  last_order_date DateTime?
+  total_spent     Decimal?
+  total_orders    Int?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  customer        Customer  @relation(fields: [customer_id], references: [id])
+
+  @@map("customer_stat")
+}
+
+model CustomerBadge {
+  id             Int        @id @default(autoincrement())
+  name           String     @unique
+  description    String?    @db.Text
+  created_at     DateTime   @default(now())
+  updated_at     DateTime   @updatedAt
+  description_ar String?    @db.Text
+  max_amount     Float
+  min_amount     Float
+  name_ar        String     @unique
+  ratio          Int
+  ads            Ad[]
+  customers      Customer[]
+  offers         Offer[]
+
+  @@map("customer_badge")
+}
+
+model CustomerClass {
+  id          Int                @id @default(autoincrement())
+  name        CustomerClassName?
+  description String?            @db.Text
+  created_at  DateTime           @default(now())
+  updated_at  DateTime           @updatedAt
+  ad          Ad[]
+  customers   Customer[]
+  offer       Offer[]
+
+  @@map("customer_class")
+}
+
+model Cart {
+  id          Int        @id @default(autoincrement())
+  customer_id String     @unique
+  total_price Decimal
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+  deleted_at  DateTime?
+  customer    Customer   @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  cart_item   CartItem[]
+  orders      Order[]
+
+  @@map("cart")
+}
+
+model CartItem {
+  id           Int         @id @default(autoincrement())
+  cart_id      Int
+  product_id   String
+  unit_id      Int
+  quantity     Int         @default(1)
+  created_at   DateTime    @default(now())
+  updated_at   DateTime    @updatedAt
+  offer_id     Int?
+  cart         Cart        @relation(fields: [cart_id], references: [id], onDelete: Cascade)
+  offer        Offer?      @relation(fields: [offer_id], references: [id])
+  product      Product     @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  product_unit ProductUnit @relation(fields: [unit_id], references: [id])
+
+  @@unique([cart_id, unit_id])
+  @@index([cart_id])
+  @@index([offer_id], map: "cart_item_offer_id_fkey")
+  @@index([product_id])
+  @@index([unit_id])
+  @@map("cart_item")
 }
 
 model Order {
-  id                Int               @id @default(autoincrement())
-  orderNumber       String            @unique
+  id                Int                  @id @default(autoincrement())
+  orderNumber       String               @unique
   customerId        String
   totalAmount       Float
-  shippingCost      Float             @default(0)
-  discount          Float             @default(0)
-  taxAmount         Float             @default(0)
-  status            OrderStatus       @default(PENDING)
-  paymentMethod     PaymentMethod     @default(CASH_ON_DELIVERY)
-  paymentStatus     PaymentStatus     @default(PENDING)
-  shippingAddress   String            @db.LongText
+  shippingCost      Float                @default(0)
+  discount          Float                @default(0)
+  taxAmount         Float                @default(0)
+  status            orders_status        @default(PENDING)
+  paymentMethod     orders_paymentMethod @default(CASH_ON_DELIVERY)
+  paymentStatus     orders_paymentStatus @default(PENDING)
+  shippingAddress   String               @db.LongText
   notes             String?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime
   paymentId         String?
   userAddressId     Int?
-  refundedAmount    Float             @default(0)
-  paymentAttempts   PaymentAttempt[]
-  items             OrderItem[]
-  customer          User              @relation(fields: [customerId], references: [id])
-  refunds           Refund[]
-  customerAddress   CustomerAddress?  @relation(fields: [customerAddressId], references: [id])
-  customerAddressId Int?
-  cart              Cart?             @relation(fields: [cartId], references: [id])
+  refundedAmount    Float                @default(0)
   cartId            Int?
-  orderAssignments  OrderAssignment[]
+  customerAddressId Int?
+  PaymentAttempt    PaymentAttempt[]
+  assignments       OrderAssignment[]
 
+  orderItems      OrderItem[]
+  cart            Cart?            @relation(fields: [cartId], references: [id])
+  customerAddress CustomerAddress? @relation(fields: [customerAddressId], references: [id])
+  user            User             @relation(fields: [customerId], references: [id])
+  refunds         Refund[]
+
+  @@index([cartId], map: "orders_cartId_fkey")
+  @@index([customerAddressId], map: "orders_customerAddressId_fkey")
   @@index([customerId], map: "orders_customerId_fkey")
   @@map("orders")
-}
-
-model PaymentAttempt {
-  id          Int           @id @default(autoincrement())
-  orderId     Int
-  provider    String
-  intentionId String?
-  status      PaymentStatus @default(PENDING)
-  rawResponse String?       @db.LongText
-  createdAt   DateTime      @default(now())
-  order       Order         @relation(fields: [orderId], references: [id])
-  refunds     Refund[]
-
-  @@index([orderId])
-  @@index([intentionId])
 }
 
 model OrderItem {
@@ -560,45 +786,151 @@ model OrderItem {
   quantity    Int
   price       Float
   createdAt   DateTime     @default(now())
-  order       Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  offer_id    Int?
+  offer       Offer?       @relation(fields: [offer_id], references: [id])
+  orders      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product     Product      @relation(fields: [productId], references: [id])
   refundItems RefundItem[]
-  offer       Offer?       @relation(fields: [offer_id], references: [id])
-  offer_id    Int?
 
+  @@index([offer_id], map: "order_items_offer_id_fkey")
   @@index([orderId], map: "order_items_orderId_fkey")
   @@index([productId], map: "order_items_productId_fkey")
   @@map("order_items")
 }
 
-model Refund {
-  id               Int             @id @default(autoincrement())
-  orderId          Int
-  paymentAttemptId Int?
-  amount           Float
-  currency         String          @default("EGP")
-  reason           String?
-  status           RefundStatus    @default(REQUESTED)
-  provider         String?
-  providerRefundId String?
-  rawResponse      String?         @db.LongText
-  requestedById    String?
-  reviewedById     String?
-  reviewedAt       DateTime?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  items            RefundItem[]
-  order            Order           @relation(fields: [orderId], references: [id])
-  paymentAttempt   PaymentAttempt? @relation(fields: [paymentAttemptId], references: [id])
-  requestedBy      User?           @relation("RefundRequestedBy", fields: [requestedById], references: [id])
-  reviewedBy       User?           @relation("RefundReviewedBy", fields: [reviewedById], references: [id])
+// model Order {
+//   id                  String         @id @default(uuid())
+//   cart_id             String?
+//   order_number        Int?
+//   total_price         Decimal?
+//   shipping_cost       Decimal?
+//   tax_amount          Decimal?
+//   notes               String?        @db.VarChar(191)
+//   shipping_address_id String?
+//   status              orders_status?
+//   created_at          DateTime       @default(now())
+//   updated_at          DateTime       @updatedAt
+//   deleted_at          DateTime?
 
+//   cart                Cart?                @relation(fields: [cart_id], references: [id])
+//   shippingAddress     CustomerAddress?     @relation("ShippingAddress", fields: [shipping_address_id], references: [id])
+//   orderItems          OrderItem[]
+//   cartItems           CartItem[]
+//   paymentTransactions PaymentTransaction[]
+//   complaints          Complaint[]
+//   reviews             Review[]
+//   assignments         OrderAssignment[]
+//   User                User?                @relation(fields: [userId], references: [id])
+//   userId              String?
+
+//   @@map("order")
+// }
+
+// model OrderItem {
+//   id                                    String    @id @default(uuid())
+//   order_id                              String?
+//   amount                                Decimal?
+//   total_price                           Decimal?
+//   product_id                            String?
+//   snapshot_product_name                 String?   @db.VarChar(191)
+//   snapshot_product_description          String?   @db.VarChar(191)
+//   snapshot_unit_type                    String?   @db.VarChar(191)
+//   snapshot_unit_name                    String?   @db.VarChar(191)
+//   snapshot_price_out_site               Decimal?
+//   snapshot_discount_value_part_for_site Decimal?
+//   offer_id                              String?
+//   snapshot_offer_type                   String?   @db.VarChar(191)
+//   snapshot_offer_value                  Decimal?
+//   snapshot_start_date                   DateTime? @db.Date
+//   snapshot_end_date                     DateTime? @db.Date
+//   snapshot_offer_is_active              Boolean?  @default(true)
+//   created_at                            DateTime  @default(now())
+//   updated_at                            DateTime  @updatedAt
+//   deleted_at                            DateTime?
+
+//   order   Order?   @relation(fields: [order_id], references: [id])
+//   product Product? @relation(fields: [product_id], references: [id])
+//   offer   Offer?   @relation(fields: [offer_id], references: [id])
+
+//   @@map("order_item")
+// }
+
+model OrderAssignment {
+  id                      Int                           @id @default(autoincrement())
+  order_id                Int?
+  representative_id       String?
+  pickup_address_id       String?
+  estimated_pickup_time   DateTime?
+  actual_pickup_time      DateTime?
+  delivery_address_id     String?
+  estimated_delivery_time DateTime?
+  actual_delivery_time    DateTime?
+  failure_reason          String?
+  notes                   String?                       @db.Text
+  created_at              DateTime                      @default(now())
+  updated_at              DateTime                      @updatedAt
+  deleted_at              DateTime?
+  receiptConfirmation     CustomerReceiptConfirmation[]
+  order                   Order?                        @relation(fields: [order_id], references: [id])
+  supplierStoreAddress    SupplierStoreAddress?         @relation(fields: [supplierStoreAddressId], references: [id])
+  supplierStoreAddressId  String?
+
+  @@index([order_id], map: "order_assignment_order_id_fkey")
+  @@map("order_assignment")
+}
+
+model CustomerReceiptConfirmation {
+  id                    Int               @id @default(autoincrement())
+  assignment_id         Int?
+  customer_id           String?
+  items_amount          Decimal?
+  package_condition     PackageCondition?
+  condition_notes       String?           @db.Text
+  photos_url            String?
+  receipt_number        String?
+  otp_verified          Boolean?
+  confirmed_at          DateTime?
+  product_rating        Int?
+  representative_rating Int?
+  delivery_feedback     String?           @db.Text
+  created_at            DateTime          @default(now())
+  updated_at            DateTime          @updatedAt
+  assignment            OrderAssignment?  @relation(fields: [assignment_id], references: [id])
+  customer              Customer?         @relation(fields: [customer_id], references: [id])
+
+  @@index([assignment_id], map: "customer_receipt_confirmation_assignment_id_fkey")
+  @@index([customer_id], map: "customer_receipt_confirmation_customer_id_fkey")
+  @@map("customer_receipt_confirmation")
+}
+
+model WishlistItem {
+  id        String   @id
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId], map: "wishlist_items_productId_fkey")
+  @@map("wishlist_items")
+}
+
+// ========== Payments ==========
+
+model PaymentAttempt {
+  id          Int                   @id @default(autoincrement())
+  orderId     Int
+  provider    String
+  intentionId String?
+  status      PaymentAttempt_status @default(PENDING)
+  rawResponse String?               @db.LongText
+  createdAt   DateTime              @default(now())
+  orders      Order                 @relation(fields: [orderId], references: [id])
+  refunds     Refund[]
+
+  @@index([intentionId])
   @@index([orderId])
-  @@index([providerRefundId])
-  @@index([requestedById])
-  @@index([reviewedById])
-  @@index([paymentAttemptId], map: "refunds_paymentAttemptId_fkey")
-  @@map("refunds")
 }
 
 model RefundItem {
@@ -615,156 +947,450 @@ model RefundItem {
   @@map("refund_items")
 }
 
-model CartItem {
-  id         Int    @id @default(autoincrement())
-  cart_id    Int
-  product_id String
-  unit_id    Int
-  quantity   Int    @default(1)
+model Refund {
+  id               Int             @id @default(autoincrement())
+  orderId          Int
+  paymentAttemptId Int?
+  amount           Float
+  currency         String          @default("EGP")
+  reason           String?
+  status           refunds_status  @default(REQUESTED)
+  provider         String?
+  providerRefundId String?
+  rawResponse      String?         @db.LongText
+  requestedById    String?
+  reviewedById     String?
+  reviewedAt       DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime
+  items            RefundItem[]
+  order            Order           @relation(fields: [orderId], references: [id])
+  PaymentAttempt   PaymentAttempt? @relation(fields: [paymentAttemptId], references: [id])
+  requestedBy      User?           @relation("RefundRequestedBy", fields: [requestedById], references: [id])
+  reviewedBy       User?           @relation("RefundReviewedBy", fields: [reviewedById], references: [id])
 
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  cart    Cart        @relation(fields: [cart_id], references: [id], onDelete: Cascade)
-  product Product     @relation(fields: [product_id], references: [id], onDelete: Cascade)
-  unit    ProductUnit @relation(fields: [unit_id], references: [id])
-
-  offer_id Int?
-  offer    Offer? @relation(fields: [offer_id], references: [id])
-
-  @@unique([cart_id, unit_id]) // ✅ unique per unit in the cart
-  @@index([cart_id])
-  @@index([product_id])
-  @@index([unit_id])
-  @@map("cart_item")
+  @@index([orderId])
+  @@index([paymentAttemptId], map: "refunds_paymentAttemptId_fkey")
+  @@index([providerRefundId])
+  @@index([requestedById])
+  @@index([reviewedById])
+  @@map("refunds")
 }
 
-model Review {
-  id        String       @id @default(uuid())
-  userId    String
-  productId String
-  rating    Float
-  comment   String?      @db.LongText
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  status    ReviewStatus @default(PENDING)
-  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+// model PaymentTransaction {
+//   id           String         @id @default(uuid())
+//   order_id     String?
+//   payment_type PaymentType?
+//   amount       Decimal?
+//   currency     String?        @default("EGP") @db.VarChar(191)
+//   status       PaymentStatus?
+//   paid_at      DateTime?
+//   created_at   DateTime       @default(now())
+//   updated_at   DateTime       @updatedAt
+//   deleted_at   DateTime?
 
-  @@unique([userId, productId])
-  @@index([productId])
-  @@index([userId])
-  @@map("reviews")
+//   order             Order?                    @relation(fields: [order_id], references: [id])
+//   cardDetail        CardPaymentDetail?
+//   walletDetail      WalletPaymentDetail?
+//   instapayDetail    InstapayPaymentDetail?
+//   installmentDetail InstallmentPaymentDetail?
+//   refunds           Refund[]
+
+//   @@map("payment_transaction")
+// }
+
+// model CardPaymentDetail {
+//   id                      String              @id @default(uuid())
+//   payment_transaction_id  String?             @unique
+//   provider                CardProvider?
+//   card_brand              CardBrand?
+//   card_last_four          String?             @db.VarChar(191)
+//   card_holder_name        String?             @db.VarChar(191)
+//   provider_transaction_id String?             @db.VarChar(191)
+//   provider_reference      String?             @db.VarChar(191)
+//   provider_response       Json?
+//   created_at              DateTime            @default(now())
+//   updated_at              DateTime            @updatedAt
+//   deleted_at              DateTime?
+//   paymentTransaction      PaymentTransaction? @relation(fields: [payment_transaction_id], references: [id])
+
+//   @@map("card_payment_detail")
+// }
+
+// model WalletPaymentDetail {
+//   id                          String              @id @default(uuid())
+//   payment_transaction_id      String?             @unique
+//   provider                    WalletProvider?
+//   wallet_phone                String?             @db.VarChar(191)
+//   provider_transaction_id     String?             @db.VarChar(191)
+//   provider_reference          String?             @db.VarChar(191)
+//   provider_response           Json?
+//   confirmation_screenshot_url String?             @db.VarChar(191)
+//   confirmation_status         ConfirmationStatus? @default(PENDING)
+//   confirmed_by_admin_id       String?
+//   confirmed_at                DateTime?
+//   rejection_reason            String?             @db.VarChar(191)
+//   created_at                  DateTime            @default(now())
+//   updated_at                  DateTime            @updatedAt
+//   deleted_at                  DateTime?
+
+//   paymentTransaction PaymentTransaction? @relation(fields: [payment_transaction_id], references: [id])
+//   admin              Admin?              @relation(fields: [confirmed_by_admin_id], references: [id])
+
+//   @@map("wallet_payment_detail")
+// }
+
+// model InstapayPaymentDetail {
+//   id                          String              @id @default(uuid())
+//   payment_transaction_id      String?             @unique
+//   sender_ipa                  String?             @db.VarChar(191)
+//   receiver_ipa                String?             @db.VarChar(191)
+//   provider_transaction_id     String?             @db.VarChar(191)
+//   provider_reference          String?             @db.VarChar(191)
+//   provider_response           Json?
+//   confirmation_screenshot_url String?             @db.VarChar(191)
+//   confirmation_status         ConfirmationStatus? @default(PENDING)
+//   confirmed_by_admin_id       String?
+//   confirmed_at                DateTime?
+//   rejection_reason            String?             @db.VarChar(191)
+//   created_at                  DateTime            @default(now())
+//   updated_at                  DateTime            @updatedAt
+//   deleted_at                  DateTime?
+
+//   paymentTransaction PaymentTransaction? @relation(fields: [payment_transaction_id], references: [id])
+//   admin              Admin?              @relation(fields: [confirmed_by_admin_id], references: [id])
+
+//   @@map("instapay_payment_detail")
+// }
+
+// model InstallmentPaymentDetail {
+//   id                      String               @id @default(uuid())
+//   payment_transaction_id  String?              @unique
+//   provider                InstallmentProvider?
+//   total_amount            Decimal?
+//   down_payment            Decimal?
+//   installment_months      Int?
+//   monthly_amount          Decimal?
+//   interest_rate           Decimal?
+//   customer_national_id    String?              @db.VarChar(191)
+//   provider_transaction_id String?              @db.VarChar(191)
+//   provider_reference      String?              @db.VarChar(191)
+//   provider_response       Json?
+//   installments_paid       Int?                 @default(0)
+//   next_due_date           DateTime?            @db.Date
+//   created_at              DateTime             @default(now())
+//   updated_at              DateTime             @updatedAt
+//   deleted_at              DateTime?
+
+//   paymentTransaction PaymentTransaction? @relation(fields: [payment_transaction_id], references: [id])
+
+//   @@map("installment_payment_detail")
+// }
+
+// model Refund {
+//   id                      String          @id @default(uuid())
+//   original_transaction_id String?
+//   requested_by_id         String?
+//   reviewed_by_id          String?
+//   refund_amount           Decimal?
+//   refund_reason           String?         @db.VarChar(191)
+//   refund_method           RefundMethod?
+//   status                  refunds_status?
+//   provider_refund_id      String?         @db.VarChar(191)
+//   provider_response       Json?
+//   processed_at            DateTime?
+//   created_at              DateTime        @default(now())
+//   updated_at              DateTime        @updatedAt
+//   deleted_at              DateTime?
+
+//   originalTransaction PaymentTransaction? @relation(fields: [original_transaction_id], references: [id])
+//   requested_by        User?               @relation("RefundRequestedBy", fields: [requested_by_id], references: [id])
+//   reviewed_by         User?               @relation("RefundReviewedBy", fields: [reviewed_by_id], references: [id])
+
+//   @@map("refund")
+// }
+
+// ========== Shipping & Logistics ==========
+
+model Countries {
+  id        String    @id
+  name      String    @db.VarChar(100)
+  code      String    @db.VarChar(3)
+  phoneCode String    @db.VarChar(5)
+  Regions   Regions[]
 }
 
-model WishlistItem {
-  id        String   @id @default(uuid())
-  userId    String
-  productId String
-  createdAt DateTime @default(now())
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Regions {
+  id             Int              @id @default(autoincrement())
+  name           String           @unique @db.VarChar(100)
+  countryId      String?
+  Countries      Countries?       @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  ShippingPrices ShippingPrices[]
 
-  @@unique([userId, productId])
-  @@index([productId], map: "wishlist_items_productId_fkey")
-  @@map("wishlist_items")
+  @@index([countryId], map: "Region_countryId_fkey")
 }
 
-model Ad {
-  id                       String       @id @default(uuid())
-  ad_type                  AdType?
-  source                   String?      @db.VarChar(191)
-  budget                   Decimal?
-  title                    String?      @db.Text
-  title_ar                 String?      @db.Text
-  description              String?      @db.Text
-  description_ar           String?      @db.Text
-  priority                 Int?
-  status                   AdStatus?
-  image_url                String?      @db.VarChar(191)
-  target_url               String?      @db.VarChar(191)
-  placement                AdPlacement?
-  popup_size               PopupSize?
-  closable                 Boolean?
-  mobile_screen            String?      @db.Text
-  start_date               DateTime?
-  end_date                 DateTime?
-  time_slots               Json?
-  duration_seconds         Int?
-  shown_seconds            Int?
-  first_shown_at           DateTime?
-  last_shown_at            DateTime?
-  target_customer_badge_id Int?
-  target_supplier_badge_id Int?
-  sort_id                  Int?         @default(0)
-  created_at               DateTime     @default(now())
-  updated_at               DateTime     @updatedAt
-  deleted_at               DateTime?
-
-  customerBadge     CustomerBadge? @relation(fields: [target_customer_badge_id], references: [id])
-  // supplierBadge SupplierBadge? @relation(fields: [target_supplier_badge_id], references: [id])
-  customerClass     CustomerClass? @relation(fields: [customer_class_id], references: [id])
-  customer_class_id Int?
-
-  @@map("ad")
+model ShippingMethod {
+  id             Int              @id @default(autoincrement())
+  name           String           @unique @db.VarChar(100)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime
+  ShippingPrices ShippingPrices[]
 }
 
-enum PopupSize {
-  SMALL
-  MEDIUM
-  LARGE
+model ShippingPrices {
+  id                    Int            @id @default(autoincrement())
+  regionId              Int
+  methodId              Int
+  basePrice             Float
+  additionalWeightPrice Float
+  estimatedDeliveryDays Int
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime
+  ShippingMethod        ShippingMethod @relation(fields: [methodId], references: [id], onDelete: Cascade)
+  Regions               Regions        @relation(fields: [regionId], references: [id], onDelete: Cascade)
+
+  @@unique([regionId, methodId])
+  @@index([methodId], map: "ShippingPrices_methodId_fkey")
 }
 
-enum AdType {
-  EXTERNAL
-  INTERNAL
-}
+// model ShippingRepresentative {
+//   id                   String                @id // References User.id
+//   type_id              String?
+//   national_id          String?               @db.VarChar(191)
+//   status               RepresentativeStatus?
+//   is_available         Boolean?              @default(true)
+//   vehicle_type         VehicleType?
+//   vehicle_plate        String?               @db.VarChar(191)
+//   max_load             Decimal?
+//   current_latitude     Decimal?
+//   current_longitude    Decimal?
+//   last_location_update DateTime?
+//   created_at           DateTime              @default(now())
+//   updated_at           DateTime              @updatedAt
+//   deleted_at           DateTime?
 
-enum AdStatus {
-  DRAFT
-  ACTIVE
-  PAUSED
-  EXPIRED
-}
+//   type                  ShippingRepresentativeType?          @relation(fields: [type_id], references: [id])
+//   stats                 ShippingRepresentativeStat?
+//   coverageAreas         RepresentativeCoverageArea[]
+//   assignments           OrderAssignment[]
+//   pickupConfirmations   RepresentativePickupConfirmation[]
+//   deliveryConfirmations RepresentativeDeliveryConfirmation[]
 
-enum AdPlacement {
-  TOP
-  MIDDLE
-  BOTTOM
-}
+//   @@map("shipping_representative")
+// }
 
-model AboutApp {
-  id                String   @id @default(uuid())
-  terms             String?  @db.Text
-  terms_ar          String?  @db.Text
-  about             String?  @db.Text
-  about_ar          String?  @db.Text
-  privacy_policy    String?  @db.Text
-  privacy_policy_ar String?  @db.Text
-  mission           String?  @db.Text
-  mission_ar        String?  @db.Text
-  vision            String?  @db.Text
-  vision_ar         String?  @db.Text
-  digital_card      String?  @db.Text
-  digital_card_ar   String?  @db.Text
-  phone             String?  @db.VarChar(191)
-  email             String?  @db.VarChar(191)
-  facebook          String?  @db.VarChar(200)
-  instagram         String?  @db.VarChar(200)
-  linkedin          String?  @db.VarChar(200)
-  pinterest         String?  @db.VarChar(200)
-  reddit            String?  @db.VarChar(200)
-  snapchat          String?  @db.VarChar(200)
-  telegram          String?  @db.VarChar(200)
-  tiktok            String?  @db.VarChar(200)
-  twitter           String?  @db.VarChar(200)
-  whatsapp          String?  @db.VarChar(200)
-  youtube           String?  @db.VarChar(200)
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+// model ShippingRepresentativeType {
+//   id              String                   @id @default(uuid())
+//   name            String                   @unique @db.VarChar(191)
+//   description     String?                  @db.VarChar(191)
+//   created_at      DateTime                 @default(now())
+//   updated_at      DateTime                 @updatedAt
+//   deleted_at      DateTime?
+//   representatives ShippingRepresentative[]
 
-  @@map("about_app")
-}
+//   @@map("shipping_representative_type")
+// }
+
+// model ShippingRepresentativeStat {
+//   representative_id     String                 @id
+//   total_deliveries      Int?
+//   successful_deliveries Int?
+//   failed_deliveries     Int?
+//   rating                Decimal?
+//   created_at            DateTime               @default(now())
+//   updated_at            DateTime               @updatedAt
+//   representative        ShippingRepresentative @relation(fields: [representative_id], references: [id])
+
+//   @@map("shipping_representative_stat")
+// }
+
+// model Governorate {
+//   id            String         @id @default(uuid())
+//   name          String?        @db.VarChar(191)
+//   is_active     Boolean?       @default(true)
+//   created_at    DateTime       @default(now())
+//   updated_at    DateTime       @updatedAt
+//   deleted_at    DateTime?
+//   deliveryAreas DeliveryArea[]
+
+//   coverageAreas RepresentativeCoverageArea[]
+
+//   @@map("governorate")
+// }
+
+// model DeliveryArea {
+//   id             String                       @id @default(uuid())
+//   governorate_id String?
+//   name           String?                      @db.VarChar(191)
+//   is_active      Boolean?                     @default(true)
+//   created_at     DateTime                     @default(now())
+//   updated_at     DateTime                     @updatedAt
+//   deleted_at     DateTime?
+//   governorate    Governorate?                 @relation(fields: [governorate_id], references: [id])
+//   coverageAreas  RepresentativeCoverageArea[]
+
+//   @@map("delivery_area")
+// }
+
+// model RepresentativeCoverageArea {
+//   id                 String   @id @default(uuid())
+//   representative_ids Json? // Array of IDs (String)
+//   governorate_ids    Json? // Array of IDs (String)
+//   area_id            String?
+//   created_at         DateTime @default(now())
+//   updated_at         DateTime @updatedAt
+
+//   area                   DeliveryArea?           @relation(fields: [area_id], references: [id])
+//   shippingRepresentative ShippingRepresentative? @relation(fields: [id], references: [id], map: "RepCoverage_Rep_fk")
+//   governorate            Governorate?            @relation(fields: [id], references: [id], map: "RepCoverage_Gov_fk")
+
+//   @@map("representative_coverage_area")
+// }
+
+// model ShippingPrice {
+//   id                      String   @id @default(uuid())
+//   region_id               Int
+//   method_id               Int
+//   base_price              Float
+//   additional_weight_price Float
+//   estimated_delivery_days Int
+//   created_at              DateTime @default(now())
+//   updated_at              DateTime @updatedAt
+
+//   @@map("shipping_price")
+// }
+
+// model OrderAssignment {
+//   id                      String            @id @default(uuid())
+//   order_id                String?
+//   representative_id       String?
+//   status                  AssignmentStatus?
+//   pickup_address_id       String?
+//   estimated_pickup_time   DateTime?
+//   actual_pickup_time      DateTime?
+//   delivery_address_id     String?
+//   estimated_delivery_time DateTime?
+//   actual_delivery_time    DateTime?
+//   failure_reason          String?           @db.VarChar(191)
+//   notes                   String?           @db.Text
+//   created_at              DateTime          @default(now())
+//   updated_at              DateTime          @updatedAt
+//   deleted_at              DateTime?
+
+//   order           Order?                  @relation(fields: [order_id], references: [id])
+//   representative  ShippingRepresentative? @relation(fields: [representative_id], references: [id])
+//   pickupAddress   SupplierStoreAddress?   @relation("PickupAddress", fields: [pickup_address_id], references: [id])
+//   deliveryAddress CustomerAddress?        @relation("DeliveryAddress", fields: [delivery_address_id], references: [id])
+
+//   handoverConfirmation SupplierHandoverConfirmation[]
+//   pickupConfirmation   RepresentativePickupConfirmation[]
+//   deliveryConfirmation RepresentativeDeliveryConfirmation[]
+//   receiptConfirmation  CustomerReceiptConfirmation[]
+//   issues               DeliveryIssue[]
+
+//   @@map("order_assignment")
+// }
+
+// model SupplierHandoverConfirmation {
+//   id                String            @id @default(uuid())
+//   assignment_id     String?
+//   supplier_id       String?
+//   items_amount      Decimal?
+//   package_condition PackageCondition?
+//   condition_notes   String?           @db.Text
+//   photos_url        String?           @db.VarChar(191)
+//   receipt_number    String?           @db.VarChar(191)
+//   confirmed_at      DateTime?
+//   created_at        DateTime          @default(now())
+//   updated_at        DateTime          @updatedAt
+
+//   assignment OrderAssignment? @relation(fields: [assignment_id], references: [id])
+//   supplier   Supplier?        @relation(fields: [supplier_id], references: [id])
+
+//   @@map("supplier_handover_confirmation")
+// }
+
+// model RepresentativePickupConfirmation {
+//   id                String            @id @default(uuid())
+//   assignment_id     String?
+//   representative_id String?
+//   items_amount      Decimal?
+//   package_condition PackageCondition?
+//   condition_notes   String?           @db.Text
+//   photos_url        String?           @db.VarChar(191)
+//   receipt_number    String?           @db.VarChar(191)
+//   pickup_latitude   Decimal?
+//   pickup_longitude  Decimal?
+//   confirmed_at      DateTime?
+//   created_at        DateTime          @default(now())
+//   updated_at        DateTime          @updatedAt
+
+//   assignment     OrderAssignment?        @relation(fields: [assignment_id], references: [id])
+//   representative ShippingRepresentative? @relation(fields: [representative_id], references: [id])
+
+//   @@map("representative_pickup_confirmation")
+// }
+
+// model RepresentativeDeliveryConfirmation {
+//   id                String            @id @default(uuid())
+//   assignment_id     String?
+//   representative_id String?
+//   items_amount      Decimal?
+//   package_condition PackageCondition?
+//   condition_notes   String?           @db.Text
+//   photos_url        String?           @db.VarChar(191)
+//   pickup_latitude   Decimal?
+//   pickup_longitude  Decimal?
+//   otp_sended        Int?
+//   confirmed_at      DateTime?
+//   created_at        DateTime          @default(now())
+//   updated_at        DateTime          @updatedAt
+
+//   assignment     OrderAssignment?        @relation(fields: [assignment_id], references: [id])
+//   representative ShippingRepresentative? @relation(fields: [representative_id], references: [id])
+
+//   @@map("representative_delivery_confirmation")
+// }
+
+// model CustomerReceiptConfirmation {
+//   id                    String            @id @default(uuid())
+//   assignment_id         String?
+//   customer_id           String?
+//   items_amount          Decimal?
+//   package_condition     PackageCondition?
+//   condition_notes       String?           @db.Text
+//   photos_url            String?           @db.VarChar(191)
+//   receipt_number        String?           @db.VarChar(191)
+//   otp_verified          Boolean?
+//   confirmed_at          DateTime?
+//   product_rating        Int?
+//   representative_rating Int?
+//   delivery_feedback     String?           @db.Text
+//   created_at            DateTime          @default(now())
+//   updated_at            DateTime          @updatedAt
+
+//   assignment OrderAssignment? @relation(fields: [assignment_id], references: [id])
+//   customer   Customer?        @relation(fields: [customer_id], references: [id])
+
+//   @@map("customer_receipt_confirmation")
+// }
+
+// model DeliveryIssue {
+//   id            String   @id @default(uuid())
+//   assignment_id String?
+//   issue_type    String?  @db.VarChar(191)
+//   description   String?  @db.Text
+//   photo_url     String?  @db.VarChar(191)
+//   created_at    DateTime @default(now())
+//   updated_at    DateTime @updatedAt
+
+//   assignment OrderAssignment? @relation(fields: [assignment_id], references: [id])
+
+//   @@map("delivery_issue")
+// }
+
+// ========== Settings & Content ==========
 
 model ApplicationSetting {
   id                                      String   @id
@@ -799,22 +1425,56 @@ model ApplicationSetting {
   @@map("application_setting")
 }
 
-model OnBoarding {
-  id          Int       @id @default(autoincrement())
-  image_url   String?
-  title       String
-  title_ar    String?
-  content     String?
-  content_ar  String?
-  subtitle    String?
-  subtitle_ar String?
-  sort_id     Int       @default(0)
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
-  deleted_at  DateTime?
+model AboutApp {
+  id                String   @id @default(uuid())
+  terms             String?  @db.Text
+  terms_ar          String?  @db.Text
+  about             String?  @db.Text
+  about_ar          String?  @db.Text
+  privacy_policy    String?  @db.Text
+  privacy_policy_ar String?  @db.Text
+  mission           String?  @db.Text
+  mission_ar        String?  @db.Text
+  vision            String?  @db.Text
+  vision_ar         String?  @db.Text
+  digital_card      String?  @db.Text
+  digital_card_ar   String?  @db.Text
+  phone             String?
+  email             String?
+  facebook          String?  @db.VarChar(200)
+  instagram         String?  @db.VarChar(200)
+  linkedin          String?  @db.VarChar(200)
+  pinterest         String?  @db.VarChar(200)
+  reddit            String?  @db.VarChar(200)
+  snapchat          String?  @db.VarChar(200)
+  telegram          String?  @db.VarChar(200)
+  tiktok            String?  @db.VarChar(200)
+  twitter           String?  @db.VarChar(200)
+  whatsapp          String?  @db.VarChar(200)
+  youtube           String?  @db.VarChar(200)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@map("about_app")
+}
+
+model Article {
+  id           Int      @id @default(autoincrement())
+  title        String   @db.VarChar(255)
+  slug         String   @unique @db.VarChar(255)
+  summary      String?  @db.VarChar(500)
+  content      String   @db.Text
+  cover_image  String?
+  keywords     String?  @db.VarChar(255)
+  published_at DateTime
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  author       String   @db.VarChar(255)
+  is_active    Boolean  @default(true)
+  sort_id      Int      @default(0)
 
   @@index([sort_id])
-  @@map("on_boarding")
+  @@map("article")
 }
 
 model ContactUs {
@@ -831,117 +1491,86 @@ model ContactUs {
   @@map("contact_us")
 }
 
-model Article {
-  id           Int      @id @default(autoincrement())
-  title        String   @db.VarChar(255)
-  slug         String   @unique @db.VarChar(255)
-  summary      String?  @db.VarChar(500)
-  content      String   @db.Text
-  cover_image  String?
-  keywords     String?  @db.VarChar(255)
-  published_at DateTime
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-  author       String   @db.VarChar(255)
-  is_active    Boolean  @default(true)
-
-  sort_id Int @default(0)
+model Faq {
+  id         Int          @id @default(autoincrement())
+  question   String
+  answer     String
+  language   FaqLanguage? @default(EN)
+  created_at DateTime     @default(now())
+  updated_at DateTime     @updatedAt
+  is_active  Boolean      @default(true)
+  sort_id    Int          @default(0)
 
   @@index([sort_id])
-  @@map("article")
+  @@map("faq")
 }
 
-model Color {
-  id   String @id
-  name String @db.VarChar(100)
-  code String @db.VarChar(7)
+model on_boarding {
+  id          Int       @id @default(autoincrement())
+  image_url   String?
+  title       String
+  title_ar    String?
+  content     String?
+  content_ar  String?
+  subtitle    String?
+  subtitle_ar String?
+  sort_id     Int       @default(0)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime
+  deleted_at  DateTime?
 
-  @@map("Colors")
+  @@index([sort_id])
 }
 
-model Country {
-  id        String   @id
-  name      String   @db.VarChar(100)
-  code      String   @db.VarChar(3)
-  phoneCode String   @db.VarChar(5)
-  regions   Region[]
+// =========================================================
+// Enums
+// =========================================================
 
-  @@map("Countries")
+enum DiscountType {
+  PERCENT
+  FIXED
 }
 
-model Region {
-  id        Int             @id @default(autoincrement())
-  name      String          @unique @db.VarChar(100)
-  countryId String?
-  country   Country?        @relation(fields: [countryId], references: [id], onDelete: Cascade)
-  prices    ShippingPrice[]
-
-  @@index([countryId], map: "Region_countryId_fkey")
-  @@map("Regions")
+enum AdType {
+  EXTERNAL
+  INTERNAL
 }
 
-model ShippingMethod {
-  id        Int             @id @default(autoincrement())
-  name      String          @unique @db.VarChar(100)
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
-  prices    ShippingPrice[]
+enum AdStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  EXPIRED
 }
 
-model ShippingPrice {
-  id                    Int            @id @default(autoincrement())
-  regionId              Int
-  methodId              Int
-  basePrice             Float
-  additionalWeightPrice Float
-  estimatedDeliveryDays Int
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
-  method                ShippingMethod @relation(fields: [methodId], references: [id], onDelete: Cascade)
-  region                Region         @relation(fields: [regionId], references: [id], onDelete: Cascade)
-
-  @@unique([regionId, methodId])
-  @@index([methodId], map: "ShippingPrices_methodId_fkey")
-  @@map("ShippingPrices")
+enum AdPlacement {
+  TOP
+  MIDDLE
+  BOTTOM
 }
 
-enum Gender {
-  MALE
-  FEMALE
+enum PopupSize {
+  SMALL
+  MEDIUM
+  LARGE
 }
 
-enum OrderStatus {
-  PENDING
-  CONFIRMED
-  PROCESSING
-  SHIPPED
-  DELIVERED
-  CANCELLED
+enum CustomerClassName {
+  NEW
+  REPEAT
+  LOYAL
+  LOST
 }
 
-enum PaymentMethod {
-  CREDIT_CARD
-  PAYPAL
-  BANK_TRANSFER
-  CASH_ON_DELIVERY
+enum PackageCondition {
+  GOOD
+  DAMAGED
+  INCOMPLETE
 }
 
-enum PaymentStatus {
-  PENDING
-  PAID
-  PARTIALLY_REFUNDED
-  REFUNDED
-  FAILED
-}
-
-enum RefundStatus {
-  REQUESTED
-  APPROVED
-  REJECTED
-  PROCESSING
-  COMPLETED
-  FAILED
-  CANCELLED
+enum FaqLanguage {
+  EN
+  AR
 }
 
 enum Language {
@@ -956,36 +1585,203 @@ enum LoginType {
   APPLE
 }
 
-enum ReviewStatus {
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum PaymentAttempt_status {
+  PENDING
+  PAID
+  PARTIALLY_REFUNDED
+  REFUNDED
+  FAILED
+}
+
+enum refunds_status {
+  REQUESTED
+  APPROVED
+  REJECTED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum reviews_status {
   PENDING
   APPROVED
   REJECTED
 }
 
-enum AdsPopupSize {
-  Small
-  Medium
-  Large
+enum orders_status {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
 }
 
-enum AdsFrequency {
-  Once
-  Daily
-  PerSession
+enum orders_paymentMethod {
+  CREDIT_CARD
+  PAYPAL
+  BANK_TRANSFER
+  CASH_ON_DELIVERY
 }
 
-enum AdsStatus {
-  Active
-  Inactive
+enum orders_paymentStatus {
+  PENDING
+  PAID
+  PARTIALLY_REFUNDED
+  REFUNDED
+  FAILED
 }
 
-enum AdsType {
-  Home
-  Popup
+// new enums
+
+enum ContractStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  CANCELLED
 }
 
-enum AdsPlacement {
-  Top
-  Middle
-  Bottom
+enum TargetModule {
+  PRODUCTS
+  SUPPLIERS
+  OFFERS
+  ADS
+}
+
+enum ActivityType {
+  CREATE
+  UPDATE
+  DELETE
+  VIEW
+}
+
+enum ComplaintCreatedByType {
+  CUSTOMER
+  SUPPLIER
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  SUCCESS
+  ERROR
+}
+
+enum Channel {
+  EMAIL
+  SMS
+}
+
+enum ReviewTargetType {
+  SUPPLIER
+  PRODUCT
+  REPRESENTATIVE
+}
+
+enum CustomerBadgeName {
+  BASIC
+  STANDARD
+  VIP
+}
+
+enum PaymentType {
+  CARD
+  WALLET
+  INSTAPAY
+  INSTALLMENT
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum CardProvider {
+  PAYMOB
+  FAWRY
+}
+
+enum CardBrand {
+  VISA
+  MASTERCARD
+  MEEZA
+}
+
+enum WalletProvider {
+  VODAFONE_CASH
+  ORANGE_CASH
+  ETISALAT_CASH
+  WE_PAY
+}
+
+enum ConfirmationStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+enum InstallmentProvider {
+  VALU
+  HALAN
+  SYMPL
+  SOUHOOLA
+  CONTACT
+}
+
+enum RefundMethod {
+  SAME_METHOD
+}
+
+enum RepresentativeStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum VehicleType {
+  MOTORCYCLE
+  CAR
+  VAN
+  TRUCK
+}
+
+enum AssignmentStatus {
+  ASSIGNED
+  ACCEPTED
+  REJECTED
+  PICKED_UP
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+  RETURNED
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

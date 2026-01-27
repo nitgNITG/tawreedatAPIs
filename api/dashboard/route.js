@@ -1,21 +1,15 @@
 import prisma from "../../prisma/client.js";
 import express from "express";
 import authorization from "../../middleware/authorization.js";
-import { langReq } from "../../middleware/getTranslation.js";
 
 const router = express.Router();
 
-router.get("/", authorization(), async (req, res) => {
-  const lang = langReq(req);
+router.get("/", authorization({ roles: ["admin"] }), async (req, res) => {
   try {
-    const user = req.user;
-    if (user.role !== "admin") {
-      return res
-        .status(403)
-        .json({ message: getTranslation(lang, "not_allowed") });
-    }
     const [
       totalUsers,
+      totalCustomers,
+      // totalSuppliers,
       totalCategories,
       totalProducts,
       totalOrders,
@@ -26,18 +20,21 @@ router.get("/", authorization(), async (req, res) => {
       totalBrands,
     ] = await Promise.all([
       prisma.user.count(),
+      prisma.customer.count(),
+      // prisma.supplier.count(),
       prisma.category.count(),
       prisma.product.count(),
       prisma.order.count(),
       prisma.onBoarding.count(),
       prisma.ad.count(),
-      prisma.faqs.count(),
+      prisma.faq.count(),
       prisma.article.count(),
       prisma.brand.count(),
     ]);
 
     const data = {
       totalUsers,
+      totalCustomers,
       totalCategories,
       totalProducts,
       totalOrders,
