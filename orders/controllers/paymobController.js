@@ -249,7 +249,7 @@ export async function getPaymobAuthToken() {
           api_key: process.env.PAYMOB_API_KEY,
           // api_key: process.env.PAYMOB_API_SECRET,
         }),
-      }
+      },
     );
     if (!response.ok) {
       const errorText = await response.text();
@@ -281,7 +281,7 @@ async function createPaymobPayment(token, amount) {
           currency: "EGP",
           items: [],
         }),
-      }
+      },
     );
 
     if (!response.ok) {
@@ -330,7 +330,7 @@ async function createPaymobPaymentKey(token, orderId, amount) {
           currency: "EGP",
           integration_id: +process.env.PAYMOB_PAYMENT_METHODS,
         }),
-      }
+      },
     );
 
     if (!response.ok) {
@@ -372,7 +372,7 @@ export async function getPaymobOrder(merchant_order_id) {
           Authorization: authToken,
         },
         body: JSON.stringify({ merchant_order_id }),
-      }
+      },
     );
     if (!response.ok) {
       const errorText = await response.text();

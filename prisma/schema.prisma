@@ -33,7 +33,9 @@ model User {
   role_id               String
   updated_at            DateTime?              @updatedAt
   is_active             Boolean?               @default(true)
+  
   gender                Gender                 @default(MALE)
+ 
   customer              Customer?
   orders                Order[]
   requestedRefunds      Refund[]               @relation("RefundRequestedBy")
