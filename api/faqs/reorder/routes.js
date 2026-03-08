@@ -57,8 +57,8 @@ router.post("/", authorization(), async (req, res) => {
     const idsSql = faqs.map((faq) => faq.id).join(",");
 
     const rawQuery = `
-      UPDATE Faqs
-      SET sortId = CASE id
+      UPDATE faq
+      SET sort_id = CASE id
         ${caseSql}
       END
       WHERE id IN (${idsSql});

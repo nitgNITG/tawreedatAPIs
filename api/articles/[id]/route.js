@@ -11,7 +11,7 @@ import deleteImage from "../../../utils/deleteImage.js";
 const router = express.Router();
 router
   .route("/:id")
-  .put(authorization(), upload.single("imageUrl"), async (req, res) => {
+  .put(authorization(), upload.single("cover_image"), async (req, res) => {
     const lang = langReq(req);
     const id = +req.params.id;
     try {
@@ -58,11 +58,11 @@ router
       }
 
       if (req.file) {
-        data.coverImage = await uploadImage(
+        data.cover_image = await uploadImage(
           req.file,
           `/articles/${Date.now()}`
         );
-        await deleteImage(isArticle.coverImage);
+        await deleteImage(isArticle.cover_image);
       }
 
       const article = await prisma.article.update({

@@ -39,7 +39,7 @@ router
         });
       }
       const data = resultValidation.data;
-      const faq = await prisma.faqs.create({
+      const faq = await prisma.faq.create({
         data,
       });
       return res.status(201).json({
@@ -48,7 +48,7 @@ router
       });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
@@ -66,11 +66,11 @@ router
         .skip()
         .limit()
         .distinct().data;
-      const faqs = await prisma.faqs.findMany(data);
+      const faqs = await prisma.faq.findMany(data);
       return res.status(200).json({ faqs });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });

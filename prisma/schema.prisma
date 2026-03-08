@@ -14,28 +14,28 @@ datasource db {
 // ========== User ==========
 
 model User {
-  id                    String                 @id @default(uuid())
-  email                 String?                @unique @db.VarChar(70)
-  phone                 String?                @unique @db.VarChar(20)
-  password              String?                @db.VarChar(100)
-  lang                  Language               @default(AR)
+  id                    String    @id @default(uuid())
+  email                 String?   @unique @db.VarChar(70)
+  phone                 String?   @unique @db.VarChar(20)
+  password              String?   @db.VarChar(100)
+  lang                  Language  @default(AR)
   apple_id              String?
   birth_date            DateTime?
-  created_at            DateTime?              @default(now())
+  created_at            DateTime? @default(now())
   deleted_at            DateTime?
   fcm_token             String?
   full_name             String
   image_url             String?
-  is_confirmed          Boolean?               @default(false)
+  is_confirmed          Boolean?  @default(false)
   last_login_at         String?
-  login_type            LoginType              @default(LOCAL)
+  login_type            LoginType @default(LOCAL)
   password_last_updated DateTime?
   role_id               String
-  updated_at            DateTime?              @updatedAt
-  is_active             Boolean?               @default(true)
-  
-  gender                Gender                 @default(MALE)
- 
+  updated_at            DateTime? @updatedAt
+  is_active             Boolean?  @default(true)
+
+  gender Gender @default(MALE)
+
   customer              Customer?
   orders                Order[]
   requestedRefunds      Refund[]               @relation("RefundRequestedBy")
@@ -254,24 +254,24 @@ model BrandCategory {
 }
 
 model Brand {
-  id              Int             @id @default(autoincrement())
-  name            String          @unique
-  slug            String          @unique
-  name_ar         String?
-  logo_url        String?
-  cover_url       String?
-  is_active       Boolean         @default(true)
-  is_popular      Boolean         @default(false)
-  created_at      DateTime        @default(now())
-  updated_at      DateTime        @updatedAt
-  description     String?         @db.LongText
-  description_ar  String?         @db.LongText
-  up_to           Int?
-  sort_id         Int             @default(0)
-  deleted_at      DateTime?
-  synonyms        String?
-  brandCategories BrandCategory[]
-  products        Product[]
+  id             Int             @id @default(autoincrement())
+  name           String          @unique
+  slug           String          @unique
+  name_ar        String?
+  logo_url       String?
+  cover_url      String?
+  is_active      Boolean         @default(true)
+  is_popular     Boolean         @default(false)
+  created_at     DateTime        @default(now())
+  updated_at     DateTime        @updatedAt
+  description    String?         @db.LongText
+  description_ar String?         @db.LongText
+  up_to          Int?
+  sort_id        Int             @default(0)
+  deleted_at     DateTime?
+  synonyms       String?
+  categories     BrandCategory[]
+  products       Product[]
 
   @@index([sort_id])
   @@fulltext([name, name_ar, synonyms, description, description_ar])
@@ -769,10 +769,10 @@ model Order {
   PaymentAttempt    PaymentAttempt[]
   assignments       OrderAssignment[]
 
-  orderItems      OrderItem[]
+  items           OrderItem[]
   cart            Cart?            @relation(fields: [cartId], references: [id])
   customerAddress CustomerAddress? @relation(fields: [customerAddressId], references: [id])
-  user            User             @relation(fields: [customerId], references: [id])
+  customer        User             @relation(fields: [customerId], references: [id])
   refunds         Refund[]
 
   @@index([cartId], map: "orders_cartId_fkey")
@@ -1507,7 +1507,7 @@ model Faq {
   @@map("faq")
 }
 
-model on_boarding {
+model onBoarding {
   id          Int       @id @default(autoincrement())
   image_url   String?
   title       String
@@ -1522,6 +1522,7 @@ model on_boarding {
   deleted_at  DateTime?
 
   @@index([sort_id])
+  @@map("on_boarding")
 }
 
 // =========================================================

@@ -76,7 +76,7 @@ export const articleSchema = (lang) => {
           message: getTranslation(lang, "keywords_too_many"),
         })
         .transform((transformedKeywords) => transformedKeywords.join(",")),
-      publishedAt: z
+      published_at: z
         .string()
         .transform(
           (value) => {
@@ -100,7 +100,7 @@ export const articleSchema = (lang) => {
 const router = express.Router();
 router
   .route("/")
-  .post(authorization(), upload.single("imageUrl"), async (req, res) => {
+  .post(authorization(), upload.single("cover_image"), async (req, res) => {
     const lang = langReq(req);
     try {
       const admin = req.user;
@@ -137,7 +137,7 @@ router
           message: getTranslation(lang, "image_required"),
         });
 
-      data.coverImage = await uploadImage(req.file, `/articles/${Date.now()}`);
+      data.cover_image = await uploadImage(req.file, `/articles/${Date.now()}`);
       const article = await prisma.article.create({
         data,
       });

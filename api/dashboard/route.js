@@ -43,6 +43,7 @@ router.get("/", authorization({ roles: ["admin"] }), async (req, res) => {
       totalFaqs,
       totalArticles,
       totalBrands,
+      
     };
     return res.status(200).json(data);
   } catch (error) {

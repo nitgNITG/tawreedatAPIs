@@ -13,13 +13,13 @@ router
     const id = +req.params.id;
     try {
       const data = new FeatureApi(req).filter({ id }).fields().data;
-      const faq = await prisma.faqs.findUnique(data);
+      const faq = await prisma.faq.findUnique(data);
       return res
         .status(200)
         .json({ faq, message: getTranslation(lang, "success") });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
@@ -45,7 +45,7 @@ router
           })),
         });
       }
-      const isFaqs = await prisma.faqs.findUnique({
+      const isFaqs = await prisma.faq.findUnique({
         where: { id },
       });
       if (!isFaqs) {
@@ -54,7 +54,7 @@ router
           .json({ message: getTranslation(lang, "faqs_not_found_message") });
       }
       const data = resultValidation.data;
-      const faq = await prisma.faqs.update({
+      const faq = await prisma.faq.update({
         where: { id },
         data,
       });
@@ -64,7 +64,7 @@ router
       });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
@@ -80,13 +80,13 @@ router
           .status(403)
           .json({ message: getTranslation(lang, "not_allowed") });
       }
-      await prisma.faqs.delete({ where: { id } });
+      await prisma.faq.delete({ where: { id } });
       return res.status(200).json({
         message: getTranslation(lang, "faqs_deleted_message"),
       });
     } catch (error) {
       console.error(error);
-      res.status(400).json({
+      res.status(500).json({
         message: getTranslation(lang, "internalError"),
         error: error.message,
       });
