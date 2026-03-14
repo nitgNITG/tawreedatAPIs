@@ -17,6 +17,16 @@ const PAGE_CONFIG = {
       ar: "terms_ar",
     },
   },
+  privacy: {
+    title: {
+      en: "Privacy Policy",
+      ar: "سياسة الخصوصية",
+    },
+    field: {
+      en: "privacy_policy",
+      ar: "privacy_policy_ar",
+    },
+  },
   delete_account: {
     title: {
       en: "Delete Account",
@@ -158,40 +168,34 @@ async function renderContentPage(req, res, next) {
   }
 }
 
-router.get(
-  "/terms",
-  (req, res, next) => {
-    req.params.page = "terms";
-    next();
-  },
-  renderContentPage,
-);
+router.get("/terms", (req, res, next) => {
+  req.params.page = "terms";
+  next();
+}, renderContentPage);
 
-router.get(
-  "/terms/:lang",
-  (req, res, next) => {
-    req.params.page = "terms";
-    next();
-  },
-  renderContentPage,
-);
+router.get("/terms/:lang", (req, res, next) => {
+  req.params.page = "terms";
+  next();
+}, renderContentPage);
 
-router.get(
-  "/delete_account",
-  (req, res, next) => {
-    req.params.page = "delete_account";
-    next();
-  },
-  renderContentPage,
-);
+router.get("/privacy", (req, res, next) => {
+  req.params.page = "privacy";
+  next();
+}, renderContentPage);
 
-router.get(
-  "/delete_account/:lang",
-  (req, res, next) => {
-    req.params.page = "delete_account";
-    next();
-  },
-  renderContentPage,
-);
+router.get("/privacy/:lang", (req, res, next) => {
+  req.params.page = "privacy";
+  next();
+}, renderContentPage);
+
+router.get("/delete_account", (req, res, next) => {
+  req.params.page = "delete_account";
+  next();
+}, renderContentPage);
+
+router.get("/delete_account/:lang", (req, res, next) => {
+  req.params.page = "delete_account";
+  next();
+}, renderContentPage);
 
 export default router;
