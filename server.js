@@ -2,18 +2,15 @@ import express from "express";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import cors from "cors";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
 import cookieParser from "cookie-parser";
 import cleanupTempFiles from "./utils/cleanupTemp.js";
 import { verifyMailer } from "./nodemailer/mailer.js";
-
-//create app
+import contentPagesRoutes from "./public/contentPages.js";
 const app = express();
 
-// --------------------------------
-// middlewares
 app.use(morgan("dev"));
 app.use(cookieParser());
 dotenv.config({
@@ -45,29 +42,22 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
-
-// Set query parser to handle nested objects like createdAt[gte]
 app.set("query parser", "extended");
 
-// Serve static files from uploads directory
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 app.use(
   "/uploads",
   express.static(
     path.join(path.dirname(new URL(import.meta.url).pathname), "uploads"),
   ),
 );
+// Public HTML routes
+app.use("/", contentPagesRoutes);
 
-//routers
+// routers
 const loadRoutes = async (folderPath, baseRoute = "/api") => {
   const fullPath = path.resolve(folderPath);
   const files = fs.readdirSync(fullPath);
 
-  // Sort files to ensure specific routes are loaded before dynamic routes
-  // Put dynamic routes (containing brackets) at the end
   const sortedFiles = files.sort((a, b) => {
     const aIsDynamic = a.includes("[") && a.includes("]");
     const bIsDynamic = b.includes("[") && b.includes("]");
@@ -99,21 +89,20 @@ const loadRoutes = async (folderPath, baseRoute = "/api") => {
   }
 };
 
-// Load routes synchronously
 (async () => {
   await loadRoutes("./api");
 
   const port = process.env.PORT || 3120;
-  // create a error middleware
+
   app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({ message: "Internal Server Error" });
   });
+
   app.listen(port, () => {
     console.log("listening on port", port);
   });
 })();
 
 cleanupTempFiles();
-
 await verifyMailer();
